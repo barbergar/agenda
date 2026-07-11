@@ -50,6 +50,8 @@
     .th-horario { font-size: 10px; color: #555; margin-top: 2px; }
     .th-descanso { font-size: 10px; color: #ef4444; margin-top: 2px; }
     .th-especial { font-size: 10px; color: #f59e0b; margin-top: 2px; }
+    .mini-btn { font-size: 10px; background: #1a1a1a; border: 1px solid #333; color: #f59e0b; border-radius: 4px; padding: 1px 6px; cursor: pointer; margin-left: 4px; transition: all .15s ease; }
+    .mini-btn:hover { background: #232323; color: #fff; }
 
     /* STICKY HORA COLUMN */
     .agenda-table td.hora-cell { position: sticky; left: 0; z-index: 20; background: #0d0d0d; border-right: 2px solid #333; border-bottom: 1px solid #1a1a1a; width: 60px; min-width: 60px; padding: 0 8px 0 0; text-align: right; vertical-align: middle; height: 38px; }
@@ -256,6 +258,29 @@
     <div class="fg"><label class="fl">Hora de entrada</label><input class="fi" type="time" id="bf-inicio" value="11:00" /></div>
     <div class="fg"><label class="fl">Hora de salida</label><input class="fi" type="time" id="bf-fin" value="20:00" /></div>
     <div class="fg"><label class="fl">Días de descanso</label><div class="dias-check" id="bf-dias"></div></div>
+    <div class="fg"><label class="fl">Cierre anticipado (opcional)</label><input class="fi" type="time" id="bf-cierre" />
+      <div style="font-size:10px;color:#555;margin-top:4px;margin-bottom:8px;">Si lo llenas, sus espacios se bloquean automáticamente desde esa hora (se puede abrir para un día específico desde la agenda).</div>
+      <select class="fs" id="bf-cierre-dia">
+        <option value="">Aplica todos los días que trabaja</option>
+        <option value="0">Solo Domingo</option>
+        <option value="1">Solo Lunes</option>
+        <option value="2">Solo Martes</option>
+        <option value="3">Solo Miércoles</option>
+        <option value="4">Solo Jueves</option>
+        <option value="5">Solo Viernes</option>
+        <option value="6">Solo Sábado</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Horario especial de Domingo</label>
+      <div class="tipo-btns" style="margin-bottom:8px;">
+        <button type="button" class="tipo-btn" id="bf-domingoEspecial" onclick="toggleFlag('domingoEspecial')">🗓️ Domingo distinto</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input class="fi" type="time" id="bf-domingo-inicio" />
+        <input class="fi" type="time" id="bf-domingo-fin" />
+      </div>
+    </div>
     <div class="fg">
       <label class="fl">Etiquetas</label>
       <div class="tipo-btns">
@@ -342,7 +367,7 @@ const SERVICIO_ONDULADO = {n:'Ondulado',s:4};
 
 // Barberos default para la primera vez que se abre (Firestore vacío)
 const BARBEROS_SEED = [
-  { nombre:'Edson', inicio:'09:00', fin:'20:30', descanso:[3], vip:true, especial:false, ondulado:false, activo:true, orden:0 },
+  { nombre:'Edson', inicio:'09:00', fin:'20:30', descanso:[3], vip:true, especial:false, ondulado:false, activo:true, orden:0, cierreDesde:'15:00', cierreDia:6, domingoEspecial:true, domingoInicio:'12:00', domingoFin:'17:00' },
   { nombre:'Ale', inicio:'11:00', fin:'20:00', descanso:[0], vip:false, especial:false, ondulado:false, activo:true, orden:1 },
   { nombre:'Noel', inicio:'11:00', fin:'20:00', descanso:[1,2], vip:false, especial:false, ondulado:false, activo:true, orden:2 },
   { nombre:'Lupita', inicio:'11:00', fin:'20:00', descanso:[3], vip:false, especial:false, ondulado:false, activo:true, orden:3 },
@@ -376,14 +401,54 @@ let slotSel = null;
 let barberoSel = null;
 let tipoSel = 'libre';
 
-// Overrides de descanso: {barbero+fecha: true} = trabajando ese día
-let descansoOverrides = {};
-function getOverrideKey(nombre){ return `${nombre}_${getDateKey(fechaActual)}`; }
+// Excepciones del día (persistentes en Firestore, reversibles): { nombreBarbero: { trabaja, cierreAbierto, id } }
+let overridesMap = {};
+let unsubOverrides = null;
+
+function escucharOverrides(){
+  if (unsubOverrides) unsubOverrides();
+  unsubOverrides = onSnapshot(query(collection(db,'overrides'), where('fecha','==',getDateKey(fechaActual))), snap => {
+    overridesMap = {};
+    snap.docs.forEach(d => { const data = d.data(); overridesMap[data.barbero] = { ...data, id: d.id }; });
+    renderGrid();
+  });
+}
+
+async function setOverrideField(nombre, campo, valor){
+  const fecha = getDateKey(fechaActual);
+  const existente = overridesMap[nombre];
+  if (existente && existente.id) {
+    await updateDoc(doc(db,'overrides',existente.id), { [campo]: valor, barbero: nombre, fecha });
+  } else {
+    await addDoc(collection(db,'overrides'), { barbero: nombre, fecha, [campo]: valor });
+  }
+}
+
 function estaDescansandoReal(b){
-  const key = getOverrideKey(b.nombre);
-  if (descansoOverrides[key]) return false;
   if (b.especial) return false;
+  const ov = overridesMap[b.nombre];
+  if (ov && ov.trabaja) return false;
   return (b.descanso||[]).includes(fechaActual.getDay());
+}
+
+function cierreAplicaHoy(b, dia){
+  if (!b.cierreDesde) return false;
+  if (b.domingoEspecial && dia===0) return false;
+  if (b.cierreDia === undefined || b.cierreDia === null || b.cierreDia === '') return true;
+  return Number(b.cierreDia) === dia;
+}
+
+function inicioEfectivo(b, dia){
+  if (b.domingoEspecial && dia===0) return b.domingoInicio || b.inicio;
+  return b.inicio;
+}
+function finEfectivo(b, dia){
+  if (b.domingoEspecial && dia===0) return b.domingoFin || b.fin;
+  if (cierreAplicaHoy(b, dia)) {
+    const ov = overridesMap[b.nombre];
+    if (!(ov && ov.cierreAbierto)) return b.cierreDesde;
+  }
+  return b.fin;
 }
 
 function actualizarFecha(){
@@ -434,8 +499,9 @@ function escucharCitas(){
 }
 
 function estaEnHorario(b, slot){
+  const dia = fechaActual.getDay();
   const m = slotToMin(slot);
-  return m >= slotToMin(b.inicio) && m < slotToMin(b.fin);
+  return m >= slotToMin(inicioEfectivo(b,dia)) && m < slotToMin(finEfectivo(b,dia));
 }
 
 function getCitaEnSlot(bNombre, slot){
@@ -474,18 +540,36 @@ function renderGrid(){
   }
 
   // THEAD
+  const dia = fechaActual.getDay();
   let thHtml = '<tr><th class="hora-th"></th>';
   BARBEROS.forEach(b => {
-    const desc = estaDescansandoReal(b);
-    const overrideKey = getOverrideKey(b.nombre);
-    const tieneOverride = descansoOverrides[overrideKey];
-    thHtml += `<th>
-      <div class="th-nombre">${b.nombre}${b.vip?' ⭐':''}</div>
-      ${desc && !tieneOverride
-        ? `<div class="th-descanso">Descanso <button onclick="activarDia('${b.nombre}')" style="font-size:10px;background:#1a1a1a;border:1px solid #333;color:#f59e0b;border-radius:4px;padding:1px 6px;cursor:pointer;margin-left:4px;">Trabaja hoy</button></div>`
-        : b.especial ? '<div class="th-especial">Verificar disponibilidad</div>'
-        : `<div class="th-horario">${slot12hr(b.inicio)} – ${slot12hr(b.fin)}</div>`}
-    </th>`;
+    const ov = overridesMap[b.nombre] || {};
+    const normalDescanso = !b.especial && (b.descanso||[]).includes(dia);
+    const descansaHoy = normalDescanso && !ov.trabaja;
+    const excepcionTrabaja = normalDescanso && ov.trabaja;
+
+    let cuerpo;
+    if (descansaHoy) {
+      cuerpo = `<div class="th-descanso">Descanso <button class="mini-btn" onclick="activarDia('${b.nombre}')">Trabaja hoy</button></div>`;
+    } else if (b.especial) {
+      cuerpo = '<div class="th-especial">Verificar disponibilidad</div>';
+    } else {
+      const iniEf = inicioEfectivo(b, dia);
+      const finEf = finEfectivo(b, dia);
+      let extra = '';
+      if (excepcionTrabaja) {
+        extra = `<div class="th-especial">Excepción hoy <button class="mini-btn" onclick="desactivarDia('${b.nombre}')">Volver a descansar</button></div>`;
+      } else if (cierreAplicaHoy(b, dia)) {
+        if (ov.cierreAbierto) {
+          extra = `<div class="th-especial">Horario completo hoy <button class="mini-btn" onclick="desactivarCierre('${b.nombre}')">Restablecer cierre</button></div>`;
+        } else {
+          extra = `<div class="th-descanso">Cierra ${slot12hr(b.cierreDesde)} <button class="mini-btn" onclick="activarCierre('${b.nombre}')">Abrir hoy</button></div>`;
+        }
+      }
+      cuerpo = `<div class="th-horario">${slot12hr(iniEf)} – ${slot12hr(finEf)}</div>${extra}`;
+    }
+
+    thHtml += `<th><div class="th-nombre">${b.nombre}${b.vip?' ⭐':''}</div>${cuerpo}</th>`;
   });
   thHtml += '</tr>';
   thead.innerHTML = thHtml;
@@ -684,11 +768,21 @@ ${sol.comentario?'Comentario: '+sol.comentario:''}
   }
 };
 
-window.activarDia = function(nombre){
-  const key = getOverrideKey(nombre);
-  descansoOverrides[key] = true;
-  renderGrid();
+window.activarDia = async function(nombre){
+  await setOverrideField(nombre, 'trabaja', true);
   showToast(`${nombre} trabajará hoy`);
+};
+window.desactivarDia = async function(nombre){
+  await setOverrideField(nombre, 'trabaja', false);
+  showToast(`${nombre} vuelve a descansar hoy`);
+};
+window.activarCierre = async function(nombre){
+  await setOverrideField(nombre, 'cierreAbierto', true);
+  showToast(`${nombre} trabajará su horario completo hoy`);
+};
+window.desactivarCierre = async function(nombre){
+  await setOverrideField(nombre, 'cierreAbierto', false);
+  showToast(`Se restableció el cierre anticipado de ${nombre}`);
 };
 
 // ---- Panel de barberos ----
@@ -709,6 +803,8 @@ function renderBarberosPanel(){
           ${b.vip?'<span class="tag vip">VIP</span>':''}
           ${b.especial?'<span class="tag especial">Horario flexible</span>':''}
           ${b.ondulado?'<span class="tag ondulado">Ondulado</span>':''}
+          ${b.cierreDesde?`<span class="tag">Cierra ${slot12hr(b.cierreDesde)}${(b.cierreDia!==undefined && b.cierreDia!==null)?' ('+DIAS_CORTO[b.cierreDia]+')':''}</span>`:''}
+          ${b.domingoEspecial?`<span class="tag">Dom ${slot12hr(b.domingoInicio||'12:00')}–${slot12hr(b.domingoFin||'17:00')}</span>`:''}
           ${b.activo===false?'<span class="tag inactivo">Inactivo</span>':''}
         </div>
       </div>
@@ -722,7 +818,7 @@ function renderBarberosPanel(){
 
 let bfEditId = null;
 let bfDescanso = [];
-let bfFlags = { vip:false, especial:false, ondulado:false, activo:true };
+let bfFlags = { vip:false, especial:false, ondulado:false, activo:true, domingoEspecial:false };
 
 function renderDiasChips(){
   const cont = document.getElementById('bf-dias');
@@ -734,7 +830,7 @@ window.toggleDia = function(n){
 };
 
 function actualizarFlagBotones(){
-  ['vip','especial','ondulado','activo'].forEach(f => {
+  ['vip','especial','ondulado','activo','domingoEspecial'].forEach(f => {
     document.getElementById('bf-'+f).className = 'tipo-btn' + (bfFlags[f] ? ' sel-flag' : '');
   });
 }
@@ -748,15 +844,23 @@ window.abrirFormBarbero = function(id){
     document.getElementById('bf-nombre').value = b.nombre;
     document.getElementById('bf-inicio').value = b.inicio;
     document.getElementById('bf-fin').value = b.fin;
+    document.getElementById('bf-cierre').value = b.cierreDesde || '';
+    document.getElementById('bf-cierre-dia').value = (b.cierreDia===undefined || b.cierreDia===null) ? '' : String(b.cierreDia);
+    document.getElementById('bf-domingo-inicio').value = b.domingoInicio || '';
+    document.getElementById('bf-domingo-fin').value = b.domingoFin || '';
     bfDescanso = [...(b.descanso||[])];
-    bfFlags = { vip:!!b.vip, especial:!!b.especial, ondulado:!!b.ondulado, activo: b.activo!==false };
+    bfFlags = { vip:!!b.vip, especial:!!b.especial, ondulado:!!b.ondulado, activo: b.activo!==false, domingoEspecial: !!b.domingoEspecial };
   } else {
     document.getElementById('barbero-form-title').textContent = 'Nuevo barbero';
     document.getElementById('bf-nombre').value = '';
     document.getElementById('bf-inicio').value = '11:00';
     document.getElementById('bf-fin').value = '20:00';
+    document.getElementById('bf-cierre').value = '';
+    document.getElementById('bf-cierre-dia').value = '';
+    document.getElementById('bf-domingo-inicio').value = '';
+    document.getElementById('bf-domingo-fin').value = '';
     bfDescanso = [];
-    bfFlags = { vip:false, especial:false, ondulado:false, activo:true };
+    bfFlags = { vip:false, especial:false, ondulado:false, activo:true, domingoEspecial:false };
   }
   renderDiasChips();
   actualizarFlagBotones();
@@ -777,6 +881,11 @@ window.guardarBarbero = async function(){
     especial: bfFlags.especial,
     ondulado: bfFlags.ondulado,
     activo: bfFlags.activo,
+    cierreDesde: document.getElementById('bf-cierre').value || null,
+    cierreDia: document.getElementById('bf-cierre-dia').value === '' ? null : Number(document.getElementById('bf-cierre-dia').value),
+    domingoEspecial: bfFlags.domingoEspecial,
+    domingoInicio: document.getElementById('bf-domingo-inicio').value || null,
+    domingoFin: document.getElementById('bf-domingo-fin').value || null,
   };
   try {
     if (bfEditId) {
@@ -799,14 +908,15 @@ window.eliminarBarbero = async function(id, nombre){
 };
 
 // ---- Eventos ----
-document.getElementById('prev-day').onclick = () => { fechaActual.setDate(fechaActual.getDate()-1); actualizarFecha(); escucharCitas(); };
-document.getElementById('next-day').onclick = () => { fechaActual.setDate(fechaActual.getDate()+1); actualizarFecha(); escucharCitas(); };
-document.getElementById('hoy-btn').onclick = () => { fechaActual = new Date(); fechaActual.setHours(0,0,0,0); actualizarFecha(); escucharCitas(); };
+document.getElementById('prev-day').onclick = () => { fechaActual.setDate(fechaActual.getDate()-1); actualizarFecha(); escucharCitas(); escucharOverrides(); };
+document.getElementById('next-day').onclick = () => { fechaActual.setDate(fechaActual.getDate()+1); actualizarFecha(); escucharCitas(); escucharOverrides(); };
+document.getElementById('hoy-btn').onclick = () => { fechaActual = new Date(); fechaActual.setHours(0,0,0,0); actualizarFecha(); escucharCitas(); escucharOverrides(); };
 document.getElementById('btn-settings').onclick = () => abrirSettings();
 
 actualizarFecha();
 escucharBarberos();
 escucharCitas();
+escucharOverrides();
 
 setInterval(() => { renderGrid(); verificarConfirmaciones(); }, 60000);
 </script>
