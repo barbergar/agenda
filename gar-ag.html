@@ -115,6 +115,14 @@
 
     /* SETTINGS / BARBEROS PANEL */
     .settings-modal { max-width: 540px; }
+    .settings-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab-btn { flex: 1; padding: 0.55rem; border-radius: 8px; background: #111; border: 1px solid #2a2a2a; color: #666; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s ease; }
+    .tab-btn.active { background: #f0f0f0; color: #111; border-color: #f0f0f0; }
+    .servicio-card { background: #111; border: 1px solid #2a2a2a; border-radius: 12px; padding: 0.8rem 1rem; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; transition: border-color .15s ease; }
+    .servicio-card:hover { border-color: #3a3a3a; }
+    .servicio-card.inactivo { opacity: 0.45; }
+    .s-nombre { font-size: 14px; font-weight: 700; color: #f0f0f0; }
+    .s-detalle { font-size: 11px; color: #666; margin-top: 2px; }
     .barbero-card { background: #111; border: 1px solid #2a2a2a; border-radius: 12px; padding: 0.8rem 1rem; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; transition: border-color .15s ease; }
     .barbero-card:hover { border-color: #3a3a3a; }
     .barbero-card.inactivo { opacity: 0.45; }
@@ -240,13 +248,56 @@
   </div>
 </div>
 
-<!-- PANEL BARBEROS -->
+<!-- PANEL BARBEROS / SERVICIOS -->
 <div class="modal-overlay" id="settings-overlay">
   <div class="modal settings-modal">
-    <div class="modal-title">Barberos</div>
-    <div id="barberos-lista"></div>
-    <button class="add-barbero-btn" onclick="abrirFormBarbero()">+ Agregar barbero</button>
+    <div class="settings-tabs">
+      <button class="tab-btn active" id="tab-barberos" onclick="cambiarTab('barberos')">Barberos</button>
+      <button class="tab-btn" id="tab-servicios" onclick="cambiarTab('servicios')">Servicios</button>
+    </div>
+    <div id="panel-barberos">
+      <div id="barberos-lista"></div>
+      <button class="add-barbero-btn" onclick="abrirFormBarbero()">+ Agregar barbero</button>
+    </div>
+    <div id="panel-servicios" style="display:none">
+      <div id="servicios-lista"></div>
+      <button class="add-barbero-btn" onclick="abrirFormServicio()">+ Agregar servicio o paquete</button>
+    </div>
     <button class="mb mb-cancel" style="width:100%;margin-top:10px;" onclick="cerrarSettings()">Cerrar</button>
+  </div>
+</div>
+
+<!-- FORM SERVICIO (nuevo/editar) -->
+<div class="modal-overlay" id="servicio-form-overlay">
+  <div class="modal">
+    <div class="modal-title" id="servicio-form-title">Nuevo servicio</div>
+    <div class="fg"><label class="fl">Nombre</label><input class="fi" type="text" id="sf-nombre" placeholder="Ej: Corte de cabello" /></div>
+    <div class="fg"><label class="fl">Duración</label>
+      <select class="fs" id="sf-slots">
+        <option value="1">30 min</option>
+        <option value="2">60 min</option>
+        <option value="3">90 min</option>
+        <option value="4">120 min</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Precio (opcional)</label><input class="fi" type="number" id="sf-precio" placeholder="Ej: 180" /></div>
+    <div class="fg">
+      <label class="fl">Etiquetas</label>
+      <div class="tipo-btns">
+        <button type="button" class="tipo-btn" id="sf-esPaquete" onclick="toggleServicioFlag('esPaquete')">📦 Es paquete</button>
+        <button type="button" class="tipo-btn" id="sf-activo" onclick="toggleServicioFlag('activo')">✅ Activo</button>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Descripción / qué incluye (opcional)</label><input class="fi" type="text" id="sf-descripcion" placeholder="Ej: Corte + diseño y ritual de barba" /></div>
+    <div class="fg">
+      <label class="fl">¿Solo lo puede hacer un barbero en específico? (opcional)</label>
+      <div class="dias-check" id="sf-barberos"></div>
+      <div style="font-size:10px;color:#555;margin-top:4px;">Si no seleccionas ninguno, cualquier barbero activo puede ofrecer este servicio.</div>
+    </div>
+    <div class="modal-btns">
+      <button class="mb mb-cancel" onclick="cerrarFormServicio()">Cancelar</button>
+      <button class="mb mb-save" onclick="guardarServicio()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -286,11 +337,6 @@
       <div class="tipo-btns">
         <button type="button" class="tipo-btn" id="bf-vip" onclick="toggleFlag('vip')">⭐ VIP</button>
         <button type="button" class="tipo-btn" id="bf-especial" onclick="toggleFlag('especial')">🔄 Horario flexible</button>
-      </div>
-    </div>
-    <div class="fg">
-      <div class="tipo-btns">
-        <button type="button" class="tipo-btn" id="bf-ondulado" onclick="toggleFlag('ondulado')">〰️ Hace Ondulado</button>
         <button type="button" class="tipo-btn" id="bf-activo" onclick="toggleFlag('activo')">✅ Activo</button>
       </div>
     </div>
@@ -348,30 +394,34 @@ const DIAS_N = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sáb
 const DIAS_CORTO = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
-// Servicios base (Ondulado se agrega aparte solo si el barbero lo tiene habilitado)
-const SERVICIOS_EDSON = [
-  {n:'Corte de cabello',s:1},{n:'Paq. Barbón',s:2},{n:'Paq. Plus+',s:2},
-  {n:'Paq. VIP',s:2},{n:'Paq. Papi Chulo',s:2},{n:'Paq. Patrón',s:3},{n:'Paq. Rey',s:3},
-  {n:'Arreglo de barba',s:1},{n:'Facial exfoliante',s:1},{n:'Carbón activado',s:1},
-  {n:'Limpieza profunda',s:1},{n:'Limpieza de cejas',s:1},{n:'Limpieza oídos',s:1},
-  {n:'Pigmentado barba',s:1},{n:'Diseño grecas',s:1},
+// Servicios/paquetes default para la primera vez que se abre (Firestore vacío)
+const SERVICIOS_SEED = [
+  { nombre:'Corte de cabello', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:0 },
+  { nombre:'Arreglo de barba', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:1 },
+  { nombre:'Retoque contorno', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:2 },
+  { nombre:'Facial exfoliante', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:3 },
+  { nombre:'Carbón activado', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:4 },
+  { nombre:'Limpieza profunda', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:5 },
+  { nombre:'Limpieza de cejas', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:6 },
+  { nombre:'Limpieza oídos', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:7 },
+  { nombre:'Pigmentado barba', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:8 },
+  { nombre:'Diseño grecas', slots:1, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:[], activo:true, orden:9 },
+  { nombre:'Ondulado', slots:4, esPaquete:false, descripcion:'', precio:null, barberosPermitidos:['Yami'], activo:true, orden:10 },
+  { nombre:'Paq. Barbón', slots:2, esPaquete:true, descripcion:'Corte + diseño y ritual de barba', precio:null, barberosPermitidos:[], activo:true, orden:0 },
+  { nombre:'Paq. Plus+', slots:2, esPaquete:true, descripcion:'Corte, limpieza facial exfoliante, mascarilla de carbón activado y limpieza de cejas', precio:null, barberosPermitidos:[], activo:true, orden:1 },
+  { nombre:'Paq. VIP', slots:2, esPaquete:true, descripcion:'Corte, barba, mascarilla de carbón activado', precio:null, barberosPermitidos:[], activo:true, orden:2 },
+  { nombre:'Paq. Papi Chulo', slots:2, esPaquete:true, descripcion:'Corte, ritual de barba, limpieza facial exfoliante, mascarilla, limpieza de cejas', precio:null, barberosPermitidos:[], activo:true, orden:3 },
+  { nombre:'Paq. Patrón', slots:3, esPaquete:true, descripcion:'Corte, facial completo, limpieza de cejas y cera española (oídos y nariz) o conos de cera para oídos', precio:null, barberosPermitidos:[], activo:true, orden:4 },
+  { nombre:'Paq. Rey', slots:3, esPaquete:true, descripcion:'Corte, barba, facial completo, limpieza de cejas, cera española (oídos y nariz) o conos de cera para oídos, y pigmento semipermanente', precio:null, barberosPermitidos:[], activo:true, orden:5 },
 ];
-const SERVICIOS_REG = [
-  {n:'Corte de cabello',s:1},{n:'Paq. Barbón',s:2},{n:'Paq. Plus+',s:2},
-  {n:'Paq. VIP',s:2},{n:'Paq. Papi Chulo',s:2},{n:'Paq. Patrón',s:3},{n:'Paq. Rey',s:3},
-  {n:'Arreglo de barba',s:1},{n:'Retoque contorno',s:1},{n:'Facial exfoliante',s:1},
-  {n:'Carbón activado',s:1},{n:'Limpieza profunda',s:1},{n:'Limpieza de cejas',s:1},
-  {n:'Limpieza oídos',s:1},{n:'Pigmentado barba',s:1},{n:'Diseño grecas',s:1},
-];
-const SERVICIO_ONDULADO = {n:'Ondulado',s:4};
 
 // Barberos default para la primera vez que se abre (Firestore vacío)
 const BARBEROS_SEED = [
-  { nombre:'Edson', inicio:'09:00', fin:'20:30', descanso:[3], vip:true, especial:false, ondulado:false, activo:true, orden:0, cierreDesde:'15:00', cierreDia:6, domingoEspecial:true, domingoInicio:'12:00', domingoFin:'17:00' },
-  { nombre:'Ale', inicio:'11:00', fin:'20:00', descanso:[0], vip:false, especial:false, ondulado:false, activo:true, orden:1 },
-  { nombre:'Noel', inicio:'11:00', fin:'20:00', descanso:[1,2], vip:false, especial:false, ondulado:false, activo:true, orden:2 },
-  { nombre:'Lupita', inicio:'11:00', fin:'20:00', descanso:[3], vip:false, especial:false, ondulado:false, activo:true, orden:3 },
-  { nombre:'Yami', inicio:'11:00', fin:'20:00', descanso:[], vip:false, especial:true, ondulado:true, activo:true, orden:4 },
+  { nombre:'Edson', inicio:'09:00', fin:'20:30', descanso:[3], vip:true, especial:false, activo:true, orden:0, cierreDesde:'15:00', cierreDia:6, domingoEspecial:true, domingoInicio:'12:00', domingoFin:'17:00' },
+  { nombre:'Ale', inicio:'11:00', fin:'20:00', descanso:[0], vip:false, especial:false, activo:true, orden:1 },
+  { nombre:'Noel', inicio:'11:00', fin:'20:00', descanso:[1,2], vip:false, especial:false, activo:true, orden:2 },
+  { nombre:'Lupita', inicio:'11:00', fin:'20:00', descanso:[3], vip:false, especial:false, activo:true, orden:3 },
+  { nombre:'Yami', inicio:'11:00', fin:'20:00', descanso:[], vip:false, especial:true, activo:true, orden:4 },
 ];
 
 // Generar slots 9:00 a 20:00
@@ -390,10 +440,15 @@ let solicitudes = [];
 let unsubSolicitudes = null;
 let unsubCitas = null;
 let unsubBarberos = null;
+let unsubServicios = null;
 let seeding = false;
+let seedingServicios = false;
 
 let BARBEROS = [];      // solo activos, para la cuadrícula
 let BARBEROS_ALL = [];  // todos (incl. inactivos), para el panel
+
+let SERVICIOS_ALL = [];      // todos (incl. inactivos), para el panel
+let SERVICIOS_ACTIVOS = [];  // solo activos, para el modal de citas
 
 let modoModal = 'nueva';
 let editId = null;
@@ -477,6 +532,24 @@ function escucharBarberos(){
     BARBEROS = BARBEROS_ALL.filter(b => b.activo !== false);
     renderGrid();
     renderBarberosPanel();
+  });
+}
+
+// ---- Servicios/paquetes desde Firestore ----
+async function seedServiciosDefault(){
+  if (seedingServicios) return;
+  seedingServicios = true;
+  for (const s of SERVICIOS_SEED) { await addDoc(collection(db,'servicios'), s); }
+  seedingServicios = false;
+}
+
+function escucharServicios(){
+  if (unsubServicios) unsubServicios();
+  unsubServicios = onSnapshot(collection(db,'servicios'), async snap => {
+    if (snap.empty && !seedingServicios) { await seedServiciosDefault(); return; }
+    SERVICIOS_ALL = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    SERVICIOS_ACTIVOS = SERVICIOS_ALL.filter(s => s.activo !== false);
+    renderServiciosPanel();
   });
 }
 
@@ -643,10 +716,8 @@ window.selTipo = function(tipo){
 
 function cargarServicios(){
   const sel = document.getElementById('f-servicio');
-  const b = BARBEROS.find(x => x.nombre === barberoSel);
-  const base = (b && b.vip) ? SERVICIOS_EDSON : SERVICIOS_REG;
-  const lista = (b && b.ondulado) ? [...base, SERVICIO_ONDULADO] : base;
-  sel.innerHTML = lista.map(s => `<option value="${s.n}" data-s="${s.s}">${s.n}</option>`).join('');
+  const lista = SERVICIOS_ACTIVOS.filter(s => !s.barberosPermitidos || s.barberosPermitidos.length===0 || s.barberosPermitidos.includes(barberoSel));
+  sel.innerHTML = lista.map(s => `<option value="${s.nombre}" data-s="${s.slots}">${s.nombre}</option>`).join('');
   autoSlots();
 }
 
@@ -789,6 +860,118 @@ window.desactivarCierre = async function(nombre){
 window.abrirSettings = function(){ document.getElementById('settings-overlay').classList.add('open'); };
 window.cerrarSettings = function(){ document.getElementById('settings-overlay').classList.remove('open'); };
 
+window.cambiarTab = function(tab){
+  document.getElementById('tab-barberos').className = 'tab-btn' + (tab==='barberos' ? ' active' : '');
+  document.getElementById('tab-servicios').className = 'tab-btn' + (tab==='servicios' ? ' active' : '');
+  document.getElementById('panel-barberos').style.display = tab==='barberos' ? 'block' : 'none';
+  document.getElementById('panel-servicios').style.display = tab==='servicios' ? 'block' : 'none';
+};
+
+function renderServiciosPanel(){
+  const cont = document.getElementById('servicios-lista');
+  if (!cont) return;
+  if (!SERVICIOS_ALL.length) { cont.innerHTML = '<div class="empty-barberos">Aún no hay servicios.</div>'; return; }
+  const individuales = SERVICIOS_ALL.filter(s => !s.esPaquete).sort((a,b)=>(a.orden||0)-(b.orden||0));
+  const paquetes = SERVICIOS_ALL.filter(s => s.esPaquete).sort((a,b)=>(a.orden||0)-(b.orden||0));
+  const pintarTarjeta = s => `
+    <div class="servicio-card${s.activo===false?' inactivo':''}">
+      <div>
+        <div class="s-nombre">${s.esPaquete?'📦 ':''}${s.nombre}</div>
+        <div class="s-detalle">${duracionMin(s.slots)} min${s.precio?' · $'+s.precio:''}${(s.barberosPermitidos&&s.barberosPermitidos.length)?' · Solo: '+s.barberosPermitidos.join(', '):''}</div>
+        ${s.descripcion?`<div class="s-detalle" style="margin-top:3px;">${s.descripcion}</div>`:''}
+      </div>
+      <div class="barbero-actions">
+        <button class="icon-btn" onclick="abrirFormServicio('${s.id}')" title="Editar">✏️</button>
+        <button class="icon-btn danger" onclick="eliminarServicio('${s.id}','${s.nombre}')" title="Eliminar">🗑</button>
+      </div>
+    </div>`;
+  let html = '';
+  if (individuales.length) html += individuales.map(pintarTarjeta).join('');
+  if (paquetes.length) html += `<div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:0.05em;padding:8px 0 4px;">Paquetes</div>` + paquetes.map(pintarTarjeta).join('');
+  cont.innerHTML = html;
+}
+function duracionMin(slots){ return (slots||1)*30; }
+
+let sfEditId = null;
+let sfBarberosPermitidos = [];
+let sfFlags = { esPaquete:false, activo:true };
+
+function renderServicioBarberosChips(){
+  const cont = document.getElementById('sf-barberos');
+  cont.innerHTML = BARBEROS.map(b => `<div class="dia-chip${sfBarberosPermitidos.includes(b.nombre)?' sel':''}" onclick="toggleServicioBarbero('${b.nombre}')">${b.nombre}</div>`).join('');
+}
+window.toggleServicioBarbero = function(nombre){
+  sfBarberosPermitidos = sfBarberosPermitidos.includes(nombre) ? sfBarberosPermitidos.filter(x=>x!==nombre) : [...sfBarberosPermitidos, nombre];
+  renderServicioBarberosChips();
+};
+function actualizarServicioFlagBotones(){
+  ['esPaquete','activo'].forEach(f => {
+    document.getElementById('sf-'+f).className = 'tipo-btn' + (sfFlags[f] ? ' sel-flag' : '');
+  });
+}
+window.toggleServicioFlag = function(f){ sfFlags[f] = !sfFlags[f]; actualizarServicioFlagBotones(); };
+
+window.abrirFormServicio = function(id){
+  sfEditId = id || null;
+  if (id) {
+    const s = SERVICIOS_ALL.find(x => x.id===id);
+    document.getElementById('servicio-form-title').textContent = 'Editar servicio';
+    document.getElementById('sf-nombre').value = s.nombre;
+    document.getElementById('sf-slots').value = s.slots || 1;
+    document.getElementById('sf-precio').value = s.precio || '';
+    document.getElementById('sf-descripcion').value = s.descripcion || '';
+    sfBarberosPermitidos = [...(s.barberosPermitidos||[])];
+    sfFlags = { esPaquete: !!s.esPaquete, activo: s.activo!==false };
+  } else {
+    document.getElementById('servicio-form-title').textContent = 'Nuevo servicio';
+    document.getElementById('sf-nombre').value = '';
+    document.getElementById('sf-slots').value = 1;
+    document.getElementById('sf-precio').value = '';
+    document.getElementById('sf-descripcion').value = '';
+    sfBarberosPermitidos = [];
+    sfFlags = { esPaquete:false, activo:true };
+  }
+  renderServicioBarberosChips();
+  actualizarServicioFlagBotones();
+  document.getElementById('servicio-form-overlay').classList.add('open');
+};
+
+window.cerrarFormServicio = function(){ document.getElementById('servicio-form-overlay').classList.remove('open'); };
+
+window.guardarServicio = async function(){
+  const nombre = document.getElementById('sf-nombre').value.trim();
+  if (!nombre) { showToast('Ingresa el nombre del servicio'); return; }
+  const precioVal = document.getElementById('sf-precio').value;
+  const data = {
+    nombre,
+    slots: parseInt(document.getElementById('sf-slots').value) || 1,
+    precio: precioVal ? Number(precioVal) : null,
+    descripcion: document.getElementById('sf-descripcion').value.trim(),
+    barberosPermitidos: sfBarberosPermitidos,
+    esPaquete: sfFlags.esPaquete,
+    activo: sfFlags.activo,
+  };
+  try {
+    if (sfEditId) {
+      await updateDoc(doc(db,'servicios',sfEditId), data);
+      showToast('Servicio actualizado');
+    } else {
+      const grupo = SERVICIOS_ALL.filter(s => !!s.esPaquete === !!data.esPaquete);
+      const maxOrden = grupo.length ? Math.max(...grupo.map(s=>s.orden||0)) : -1;
+      data.orden = maxOrden + 1;
+      await addDoc(collection(db,'servicios'), data);
+      showToast('Servicio agregado');
+    }
+    cerrarFormServicio();
+  } catch(e) { showToast('Error al guardar servicio'); }
+};
+
+window.eliminarServicio = async function(id, nombre){
+  if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  await deleteDoc(doc(db,'servicios',id));
+  showToast('Servicio eliminado');
+};
+
 function renderBarberosPanel(){
   const cont = document.getElementById('barberos-lista');
   if (!BARBEROS_ALL.length) { cont.innerHTML = '<div class="empty-barberos">Aún no hay barberos.</div>'; return; }
@@ -802,7 +985,6 @@ function renderBarberosPanel(){
         <div class="barbero-tags">
           ${b.vip?'<span class="tag vip">VIP</span>':''}
           ${b.especial?'<span class="tag especial">Horario flexible</span>':''}
-          ${b.ondulado?'<span class="tag ondulado">Ondulado</span>':''}
           ${b.cierreDesde?`<span class="tag">Cierra ${slot12hr(b.cierreDesde)}${(b.cierreDia!==undefined && b.cierreDia!==null)?' ('+DIAS_CORTO[b.cierreDia]+')':''}</span>`:''}
           ${b.domingoEspecial?`<span class="tag">Dom ${slot12hr(b.domingoInicio||'12:00')}–${slot12hr(b.domingoFin||'17:00')}</span>`:''}
           ${b.activo===false?'<span class="tag inactivo">Inactivo</span>':''}
@@ -818,7 +1000,7 @@ function renderBarberosPanel(){
 
 let bfEditId = null;
 let bfDescanso = [];
-let bfFlags = { vip:false, especial:false, ondulado:false, activo:true, domingoEspecial:false };
+let bfFlags = { vip:false, especial:false, activo:true, domingoEspecial:false };
 
 function renderDiasChips(){
   const cont = document.getElementById('bf-dias');
@@ -830,7 +1012,7 @@ window.toggleDia = function(n){
 };
 
 function actualizarFlagBotones(){
-  ['vip','especial','ondulado','activo','domingoEspecial'].forEach(f => {
+  ['vip','especial','activo','domingoEspecial'].forEach(f => {
     document.getElementById('bf-'+f).className = 'tipo-btn' + (bfFlags[f] ? ' sel-flag' : '');
   });
 }
@@ -849,7 +1031,7 @@ window.abrirFormBarbero = function(id){
     document.getElementById('bf-domingo-inicio').value = b.domingoInicio || '';
     document.getElementById('bf-domingo-fin').value = b.domingoFin || '';
     bfDescanso = [...(b.descanso||[])];
-    bfFlags = { vip:!!b.vip, especial:!!b.especial, ondulado:!!b.ondulado, activo: b.activo!==false, domingoEspecial: !!b.domingoEspecial };
+    bfFlags = { vip:!!b.vip, especial:!!b.especial, activo: b.activo!==false, domingoEspecial: !!b.domingoEspecial };
   } else {
     document.getElementById('barbero-form-title').textContent = 'Nuevo barbero';
     document.getElementById('bf-nombre').value = '';
@@ -860,7 +1042,7 @@ window.abrirFormBarbero = function(id){
     document.getElementById('bf-domingo-inicio').value = '';
     document.getElementById('bf-domingo-fin').value = '';
     bfDescanso = [];
-    bfFlags = { vip:false, especial:false, ondulado:false, activo:true, domingoEspecial:false };
+    bfFlags = { vip:false, especial:false, activo:true, domingoEspecial:false };
   }
   renderDiasChips();
   actualizarFlagBotones();
@@ -879,7 +1061,6 @@ window.guardarBarbero = async function(){
     descanso: bfDescanso,
     vip: bfFlags.vip,
     especial: bfFlags.especial,
-    ondulado: bfFlags.ondulado,
     activo: bfFlags.activo,
     cierreDesde: document.getElementById('bf-cierre').value || null,
     cierreDia: document.getElementById('bf-cierre-dia').value === '' ? null : Number(document.getElementById('bf-cierre-dia').value),
@@ -915,11 +1096,12 @@ document.getElementById('btn-settings').onclick = () => abrirSettings();
 
 actualizarFecha();
 escucharBarberos();
+escucharServicios();
 escucharCitas();
 escucharOverrides();
 
 setInterval(() => { renderGrid(); verificarConfirmaciones(); }, 60000);
 </script>
-<a href="https://wa.me/522223961602" target="_blank" style="position:fixed;bottom:1.5rem;right:1rem;width:52px;height:52px;background:#25d366;border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 4px 12px rgba(37,211,102,.4);z-index:50;font-size:26px;transition:transform .15s ease;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">💬</a>
+<a href="https://wa.me/522223961602" target="_blank" style="position:fixed;bottom:1.5rem;right:1rem;background:#25d366;border-radius:30px;display:flex;align-items:center;gap:8px;padding:12px 18px;text-decoration:none;box-shadow:0 4px 12px rgba(37,211,102,.4);z-index:50;font-size:14px;font-weight:600;color:#fff;transition:transform .15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">💬 Escríbenos por WhatsApp</a>
 </body>
 </html>
