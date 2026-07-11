@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barbería Garage — Agenda</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #f0f0f0; overflow: hidden; height: 100vh; }
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* HEADER FIJO */
+    .header { padding: 0.75rem 1.1rem; border-bottom: 1px solid #232323; display: flex; justify-content: space-between; align-items: center; background: #111; flex-shrink: 0; }
+    .header-title { font-size: 15px; font-weight: 700; color: #f0f0f0; letter-spacing: 0.01em; }
+    .header-sub { font-size: 11px; color: #555; margin-top: 2px; }
+    .header-right { display: flex; gap: 8px; align-items: center; }
+    .gear-btn { background: none; border: 1px solid #2a2a2a; color: #888; font-size: 15px; border-radius: 8px; padding: 6px 11px; cursor: pointer; transition: all .15s ease; line-height: 1; }
+    .gear-btn:hover { background: #1a1a1a; color: #f0f0f0; border-color: #3a3a3a; transform: translateY(-1px); }
+
+    /* DATE NAV FIJO */
+    .date-nav { display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 1rem; border-bottom: 1px solid #232323; background: #111; flex-shrink: 0; }
+    .date-btn { background: none; border: none; color: #666; font-size: 22px; cursor: pointer; padding: 2px 10px; line-height: 1; border-radius: 6px; transition: all .15s ease; }
+    .date-btn:hover { color: #f0f0f0; background: #1a1a1a; }
+    .date-center { text-align: center; flex: 1; }
+    .date-label { font-size: 14px; font-weight: 700; color: #f0f0f0; }
+    .date-sub { font-size: 11px; color: #555; }
+    .hoy-btn { font-size: 12px; color: #888; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 7px; padding: 5px 13px; cursor: pointer; transition: all .15s ease; }
+    .hoy-btn:hover { color: #f0f0f0; border-color: #3a3a3a; }
+
+    /* LEYENDA */
+    .leyenda { display: flex; gap: 12px; padding: 0.45rem 1rem; border-bottom: 1px solid #1e1e1e; background: #0d0d0d; flex-shrink: 0; flex-wrap: wrap; }
+    .ley { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+    .ley-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+    /* AGENDA CONTAINER - scroll area */
+    .agenda-container { flex: 1; overflow: hidden; position: relative; }
+    .agenda-scroll { overflow: auto; height: 100%; width: 100%; }
+    .cargando-barberos { padding: 3rem 1rem; text-align: center; color: #555; font-size: 13px; }
+
+    /* GRID */
+    .agenda-table { border-collapse: collapse; table-layout: fixed; }
+
+    /* STICKY HEADER ROW */
+    .agenda-table thead th { position: sticky; top: 0; z-index: 30; background: #1a1a1a; border-bottom: 2px solid #333; border-right: 1px solid #222; padding: 9px 6px; text-align: center; white-space: nowrap; min-width: 150px; }
+    .agenda-table thead th.hora-th { position: sticky; top: 0; left: 0; z-index: 40; background: #111; min-width: 60px; width: 60px; border-right: 2px solid #333; }
+    .th-nombre { font-size: 13px; font-weight: 700; color: #f0f0f0; }
+    .th-horario { font-size: 10px; color: #555; margin-top: 2px; }
+    .th-descanso { font-size: 10px; color: #ef4444; margin-top: 2px; }
+    .th-especial { font-size: 10px; color: #f59e0b; margin-top: 2px; }
+
+    /* STICKY HORA COLUMN */
+    .agenda-table td.hora-cell { position: sticky; left: 0; z-index: 20; background: #0d0d0d; border-right: 2px solid #333; border-bottom: 1px solid #1a1a1a; width: 60px; min-width: 60px; padding: 0 8px 0 0; text-align: right; vertical-align: middle; height: 38px; }
+    .hora-txt { font-size: 12px; color: #777; white-space: nowrap; font-weight: 400; }
+    .hora-txt.entera { font-size: 13px; color: #aaa; font-weight: 600; }
+
+    /* CELDAS */
+    .agenda-table td.slot { border-bottom: 1px solid #1a1a1a; border-right: 1px solid #1a1a1a; height: 38px; min-width: 150px; position: relative; cursor: pointer; vertical-align: top; transition: background .1s ease; }
+    .agenda-table td.slot:hover { background: #181818; }
+    .agenda-table td.slot.fuera { background: #0d0d0d; cursor: not-allowed; }
+    .agenda-table td.slot.fuera:hover { background: #0d0d0d; }
+    .agenda-table td.slot.hora-entera { border-bottom: 1px solid #222; }
+
+    /* CITAS */
+    .cita { position: absolute; inset: 2px; border-radius: 6px; padding: 3px 6px; font-size: 11px; cursor: pointer; overflow: hidden; z-index: 5; transition: filter .12s ease; }
+    .cita:hover { filter: brightness(1.15); }
+    .cita-libre { background: #003d1a; border-left: 3px solid #22c55e; }
+    .cita-fijo { background: #001a3d; border-left: 3px solid #3b82f6; }
+    .cita-bloqueado { background: #2d0000; border-left: 3px solid #ef4444; }
+    .cita-cancelado { background: #2d2200; border-left: 3px solid #f59e0b; }
+    .cita-nombre { font-weight: 700; color: #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+    .cita-servicio { color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; margin-top: 1px; }
+    .cita-hora-txt { color: #666; font-size: 10px; margin-top: 1px; }
+
+    /* BURBUJA CONFIRMACION */
+    .burbuja { position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; z-index: 10; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 100; display: flex; align-items: flex-end; justify-content: center; opacity: 0; visibility: hidden; transition: opacity .2s ease; }
+    .modal-overlay.open { opacity: 1; visibility: visible; }
+    .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 20px 20px 0 0; padding: 1.25rem 1.25rem 2rem; width: 100%; max-width: 500px; max-height: 92vh; overflow-y: auto; transform: translateY(24px); transition: transform .22s ease; }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-context { background: #0d0d0d; border-radius: 10px; padding: 10px 14px; margin-bottom: 1rem; }
+    .modal-context-dia { font-size: 13px; font-weight: 700; color: #f0f0f0; }
+    .modal-context-hora { font-size: 22px; font-weight: 800; color: #f0f0f0; line-height: 1; margin-top: 2px; }
+    .modal-context-barbero { font-size: 13px; color: #888; margin-top: 3px; }
+    .modal-title { font-size: 15px; font-weight: 700; color: #f0f0f0; margin-bottom: 0.75rem; }
+    .fg { margin-bottom: 10px; }
+    .fl { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; display: block; }
+    .fi { width: 100%; padding: 0.6rem 0.75rem; font-size: 14px; border: 1px solid #2a2a2a; border-radius: 8px; background: #111; color: #f0f0f0; transition: border-color .15s ease; }
+    .fi:focus { outline: none; border-color: #555; }
+    .fs { width: 100%; padding: 0.6rem 0.75rem; font-size: 14px; border: 1px solid #2a2a2a; border-radius: 8px; background: #111; color: #f0f0f0; }
+    .tipo-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tipo-btn { flex: 1; min-width: 80px; padding: 0.55rem; border: 1px solid #2a2a2a; border-radius: 8px; background: #111; color: #666; font-size: 12px; cursor: pointer; text-align: center; transition: all .15s ease; }
+    .tipo-btn:hover { border-color: #444; }
+    .tipo-btn.sel-libre { border-color: #22c55e; color: #22c55e; background: #003d1a; font-weight: 600; }
+    .tipo-btn.sel-fijo { border-color: #3b82f6; color: #3b82f6; background: #001a3d; font-weight: 600; }
+    .tipo-btn.sel-bloqueado { border-color: #ef4444; color: #ef4444; background: #2d0000; font-weight: 600; }
+    .tipo-btn.sel-cancelado { border-color: #f59e0b; color: #f59e0b; background: #2d2200; font-weight: 600; }
+    .tipo-btn.sel-flag { border-color: #f0f0f0; color: #f0f0f0; background: #262626; font-weight: 600; }
+    .modal-btns { display: flex; gap: 8px; margin-top: 1rem; }
+    .mb { flex: 1; padding: 0.75rem; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .15s ease; }
+    .mb:hover { filter: brightness(1.1); }
+    .mb-cancel { background: #2a2a2a; color: #888; }
+    .mb-save { background: #f0f0f0; color: #111; }
+    .mb-del { background: #2d0000; color: #ef4444; flex: 0.6; }
+    .mb-noshow { background: #2d2200; color: #f59e0b; flex: 0.8; font-size: 12px; }
+
+    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #f0f0f0; color: #111; padding: 0.65rem 1.25rem; border-radius: 20px; font-size: 13px; z-index: 200; display: none; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+
+    /* SETTINGS / BARBEROS PANEL */
+    .settings-modal { max-width: 540px; }
+    .barbero-card { background: #111; border: 1px solid #2a2a2a; border-radius: 12px; padding: 0.8rem 1rem; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; transition: border-color .15s ease; }
+    .barbero-card:hover { border-color: #3a3a3a; }
+    .barbero-card.inactivo { opacity: 0.45; }
+    .b-nombre { font-size: 14px; font-weight: 700; color: #f0f0f0; }
+    .b-detalle { font-size: 11px; color: #666; margin-top: 2px; }
+    .barbero-tags { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+    .tag { font-size: 9px; padding: 2px 7px; border-radius: 10px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #777; text-transform: uppercase; letter-spacing: 0.03em; }
+    .tag.vip { color: #f59e0b; border-color: #4a3410; }
+    .tag.especial { color: #a78bfa; border-color: #382a5c; }
+    .tag.ondulado { color: #38bdf8; border-color: #1e3a4a; }
+    .tag.inactivo { color: #ef4444; border-color: #4a1010; }
+    .barbero-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .icon-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #888; font-size: 13px; border-radius: 7px; padding: 6px 9px; cursor: pointer; transition: all .15s ease; }
+    .icon-btn:hover { background: #232323; color: #f0f0f0; }
+    .icon-btn.danger:hover { color: #ef4444; border-color: #ef444455; }
+    .add-barbero-btn { width: 100%; padding: 0.7rem; border-radius: 10px; background: #1a1a1a; border: 1px dashed #333; color: #888; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 4px; transition: all .15s ease; }
+    .add-barbero-btn:hover { border-color: #555; color: #f0f0f0; }
+    .dias-check { display: flex; gap: 5px; flex-wrap: wrap; }
+    .dia-chip { padding: 6px 10px; border: 1px solid #2a2a2a; border-radius: 8px; background: #111; color: #666; font-size: 11px; cursor: pointer; transition: all .15s ease; }
+    .dia-chip.sel { border-color: #ef4444; color: #ef4444; background: #2d0000; font-weight: 600; }
+    .empty-barberos { text-align: center; color: #555; font-size: 12px; padding: 1.5rem 0; }
+
+    /* LOGIN */
+    .login-overlay { position: fixed; inset: 0; background: #0a0a0a; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .login-brand { font-size: 13px; color: #555; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .login-input { padding: 0.85rem; font-size: 15px; border: 1px solid #2a2a2a; border-radius: 10px; background: #151515; color: #f0f0f0; width: 280px; text-align: center; transition: border-color .15s ease; }
+    .login-input:focus { outline: none; border-color: #555; }
+    .login-btn { padding: 0.85rem 2rem; background: #f0f0f0; color: #111; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; width: 280px; transition: all .15s ease; }
+    .login-btn:hover { filter: brightness(1.08); }
+    .login-err { font-size: 13px; color: #ef4444; min-height: 20px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div><div class="header-title">Barbería Garage — Agenda</div><div class="header-sub" id="fecha-header"></div></div>
+    <div class="header-right">
+      <button class="gear-btn" id="btn-settings" title="Barberos">⚙️</button>
+    </div>
+  </div>
+  <div class="date-nav">
+    <button class="date-btn" id="prev-day">‹</button>
+    <div class="date-center"><div class="date-label" id="date-label"></div><div class="date-sub" id="date-sub"></div></div>
+    <button class="date-btn" id="next-day">›</button>
+    <button class="hoy-btn" id="hoy-btn">Hoy</button>
+  </div>
+  <div class="leyenda">
+    <div class="ley"><div class="ley-dot" style="background:#22c55e"></div>Libre</div>
+    <div class="ley"><div class="ley-dot" style="background:#3b82f6"></div>Fijo</div>
+    <div class="ley"><div class="ley-dot" style="background:#ef4444"></div>Bloqueado</div>
+    <div class="ley"><div class="ley-dot" style="background:#f59e0b"></div>Cancelado / No llegó</div>
+  </div>
+  <div class="agenda-container">
+    <div class="agenda-scroll">
+      <table class="agenda-table" id="agenda-table">
+        <thead id="agenda-thead"></thead>
+        <tbody id="agenda-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- MODAL CITA -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-context">
+      <div class="modal-context-dia" id="ctx-dia"></div>
+      <div class="modal-context-hora" id="ctx-hora"></div>
+      <div class="modal-context-barbero" id="ctx-barbero"></div>
+    </div>
+    <div class="modal-title" id="modal-title">Nueva cita</div>
+
+    <div class="fg">
+      <label class="fl">Tipo</label>
+      <div class="tipo-btns">
+        <button class="tipo-btn" id="tb-libre" onclick="selTipo('libre')">🟢 Libre</button>
+        <button class="tipo-btn" id="tb-fijo" onclick="selTipo('fijo')">🔵 Fijo</button>
+        <button class="tipo-btn" id="tb-bloqueado" onclick="selTipo('bloqueado')">🔴 Bloquear</button>
+        <button class="tipo-btn" id="tb-cancelado" onclick="selTipo('cancelado')">🟡 Cancelado</button>
+      </div>
+    </div>
+
+    <div id="form-cita">
+      <div class="fg"><label class="fl">Nombre del cliente</label><input class="fi" type="text" id="f-nombre" placeholder="Nombre" /></div>
+      <div class="fg"><label class="fl">Teléfono (opcional)</label><input class="fi" type="tel" id="f-telefono" placeholder="10 dígitos" inputmode="numeric" /></div>
+      <div class="fg"><label class="fl">Servicio</label><select class="fs" id="f-servicio" onchange="autoSlots()"></select></div>
+      <div class="fg"><label class="fl">Duración</label>
+        <select class="fs" id="f-slots">
+          <option value="1">30 min</option>
+          <option value="2">60 min</option>
+          <option value="3">90 min</option>
+          <option value="4">120 min</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Comentario (opcional)</label><input class="fi" type="text" id="f-comentario" placeholder="Ej: llega 10 min tarde, incluye ceja..." /></div>
+    </div>
+
+    <div id="form-bloqueo" style="display:none">
+      <div class="fg"><label class="fl">Motivo (opcional)</label><input class="fi" type="text" id="f-motivo" placeholder="Ej: Comida, Retraso..." /></div>
+      <div class="fg"><label class="fl">Duración</label>
+        <select class="fs" id="f-slots-bloqueo">
+          <option value="1">30 min</option>
+          <option value="2">60 min</option>
+          <option value="3">90 min</option>
+          <option value="4">120 min</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-btns" id="btns-nueva">
+      <button class="mb mb-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="mb mb-save" onclick="guardarCita()">Agendar</button>
+    </div>
+    <div class="modal-btns" id="btns-editar" style="display:none">
+      <button class="mb mb-del" onclick="eliminarCita()">🗑</button>
+      <button class="mb mb-noshow" onclick="marcarNoShow()">No llegó</button>
+      <button class="mb mb-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="mb mb-save" onclick="guardarCita()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL BARBEROS -->
+<div class="modal-overlay" id="settings-overlay">
+  <div class="modal settings-modal">
+    <div class="modal-title">Barberos</div>
+    <div id="barberos-lista"></div>
+    <button class="add-barbero-btn" onclick="abrirFormBarbero()">+ Agregar barbero</button>
+    <button class="mb mb-cancel" style="width:100%;margin-top:10px;" onclick="cerrarSettings()">Cerrar</button>
+  </div>
+</div>
+
+<!-- FORM BARBERO (nuevo/editar) -->
+<div class="modal-overlay" id="barbero-form-overlay">
+  <div class="modal">
+    <div class="modal-title" id="barbero-form-title">Nuevo barbero</div>
+    <div class="fg"><label class="fl">Nombre</label><input class="fi" type="text" id="bf-nombre" placeholder="Nombre" /></div>
+    <div class="fg"><label class="fl">Hora de entrada</label><input class="fi" type="time" id="bf-inicio" value="11:00" /></div>
+    <div class="fg"><label class="fl">Hora de salida</label><input class="fi" type="time" id="bf-fin" value="20:00" /></div>
+    <div class="fg"><label class="fl">Días de descanso</label><div class="dias-check" id="bf-dias"></div></div>
+    <div class="fg">
+      <label class="fl">Etiquetas</label>
+      <div class="tipo-btns">
+        <button type="button" class="tipo-btn" id="bf-vip" onclick="toggleFlag('vip')">⭐ VIP</button>
+        <button type="button" class="tipo-btn" id="bf-especial" onclick="toggleFlag('especial')">🔄 Horario flexible</button>
+      </div>
+    </div>
+    <div class="fg">
+      <div class="tipo-btns">
+        <button type="button" class="tipo-btn" id="bf-ondulado" onclick="toggleFlag('ondulado')">〰️ Hace Ondulado</button>
+        <button type="button" class="tipo-btn" id="bf-activo" onclick="toggleFlag('activo')">✅ Activo</button>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="mb mb-cancel" onclick="cerrarFormBarbero()">Cancelar</button>
+      <button class="mb mb-save" onclick="guardarBarbero()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, doc, deleteDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+// ---- Sesión propia de Agenda (independiente de Caja) ----
+function checkAgendaSession(){
+  const s = JSON.parse(sessionStorage.getItem('agenda_session') || 'null');
+  if (s && (Date.now() - s.ts) < 8 * 3600000) return true;
+  const div = document.createElement('div');
+  div.className = 'login-overlay';
+  div.innerHTML = `
+    <div class="login-brand">Barbería Garage — Agenda</div>
+    <input id="ag-pass" class="login-input" type="password" placeholder="Contraseña" />
+    <button id="ag-btn" class="login-btn">Entrar</button>
+    <div id="ag-err" class="login-err"></div>`;
+  document.body.appendChild(div);
+  document.getElementById('ag-btn').onclick = () => {
+    const pass = document.getElementById('ag-pass').value;
+    if (pass === 'agend2026') {
+      sessionStorage.setItem('agenda_session', JSON.stringify({ ts: Date.now() }));
+      div.remove();
+    } else {
+      document.getElementById('ag-err').textContent = 'Contraseña incorrecta';
+      document.getElementById('ag-pass').value = '';
+    }
+  };
+  document.getElementById('ag-pass').onkeydown = e => { if (e.key === 'Enter') document.getElementById('ag-btn').click(); };
+  return false;
+}
+checkAgendaSession();
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBD5ZyaEHhmTmjwTj3mra9be3bjmpxcPZM",
+  authDomain: "agenda-garage-6035c.firebaseapp.com",
+  projectId: "agenda-garage-6035c",
+  storageBucket: "agenda-garage-6035c.firebasestorage.app",
+  messagingSenderId: "235643370520",
+  appId: "1:235643370520:web:130bc8908561286014176d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const DIAS_N = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const DIAS_CORTO = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+// Servicios base (Ondulado se agrega aparte solo si el barbero lo tiene habilitado)
+const SERVICIOS_EDSON = [
+  {n:'Corte de cabello',s:1},{n:'Paq. Barbón',s:2},{n:'Paq. Plus+',s:2},
+  {n:'Paq. VIP',s:2},{n:'Paq. Papi Chulo',s:2},{n:'Paq. Patrón',s:3},{n:'Paq. Rey',s:3},
+  {n:'Arreglo de barba',s:1},{n:'Facial exfoliante',s:1},{n:'Carbón activado',s:1},
+  {n:'Limpieza profunda',s:1},{n:'Limpieza de cejas',s:1},{n:'Limpieza oídos',s:1},
+  {n:'Pigmentado barba',s:1},{n:'Diseño grecas',s:1},
+];
+const SERVICIOS_REG = [
+  {n:'Corte de cabello',s:1},{n:'Paq. Barbón',s:2},{n:'Paq. Plus+',s:2},
+  {n:'Paq. VIP',s:2},{n:'Paq. Papi Chulo',s:2},{n:'Paq. Patrón',s:3},{n:'Paq. Rey',s:3},
+  {n:'Arreglo de barba',s:1},{n:'Retoque contorno',s:1},{n:'Facial exfoliante',s:1},
+  {n:'Carbón activado',s:1},{n:'Limpieza profunda',s:1},{n:'Limpieza de cejas',s:1},
+  {n:'Limpieza oídos',s:1},{n:'Pigmentado barba',s:1},{n:'Diseño grecas',s:1},
+];
+const SERVICIO_ONDULADO = {n:'Ondulado',s:4};
+
+// Barberos default para la primera vez que se abre (Firestore vacío)
+const BARBEROS_SEED = [
+  { nombre:'Edson', inicio:'09:00', fin:'20:30', descanso:[3], vip:true, especial:false, ondulado:false, activo:true, orden:0 },
+  { nombre:'Ale', inicio:'11:00', fin:'20:00', descanso:[0], vip:false, especial:false, ondulado:false, activo:true, orden:1 },
+  { nombre:'Noel', inicio:'11:00', fin:'20:00', descanso:[1,2], vip:false, especial:false, ondulado:false, activo:true, orden:2 },
+  { nombre:'Lupita', inicio:'11:00', fin:'20:00', descanso:[3], vip:false, especial:false, ondulado:false, activo:true, orden:3 },
+  { nombre:'Yami', inicio:'11:00', fin:'20:00', descanso:[], vip:false, especial:true, ondulado:true, activo:true, orden:4 },
+];
+
+// Generar slots 9:00 a 20:00
+const ALL_SLOTS = [];
+for (let m = 9*60; m <= 20*60; m += 30) { ALL_SLOTS.push(minToSlot(m)); }
+
+function minToSlot(m){ return `${String(Math.floor(m/60)).padStart(2,'0')}:${m%60===0?'00':'30'}`; }
+function slot12hr(slot){ const [h,m]=slot.split(':').map(Number); const ampm=h>=12?'PM':'AM'; const h12=h%12||12; return `${h12}:${m===0?'00':'30'} ${ampm}`; }
+function slotToMin(s){ const [h,m]=s.split(':').map(Number); return h*60+m; }
+function getDateKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
+
+let fechaActual = new Date(); fechaActual.setHours(0,0,0,0);
+let citas = [];
+let solicitudes = [];
+let unsubSolicitudes = null;
+let unsubCitas = null;
+let unsubBarberos = null;
+let seeding = false;
+
+let BARBEROS = [];      // solo activos, para la cuadrícula
+let BARBEROS_ALL = [];  // todos (incl. inactivos), para el panel
+
+let modoModal = 'nueva';
+let editId = null;
+let slotSel = null;
+let barberoSel = null;
+let tipoSel = 'libre';
+
+// Overrides de descanso: {barbero+fecha: true} = trabajando ese día
+let descansoOverrides = {};
+function getOverrideKey(nombre){ return `${nombre}_${getDateKey(fechaActual)}`; }
+function estaDescansandoReal(b){
+  const key = getOverrideKey(b.nombre);
+  if (descansoOverrides[key]) return false;
+  if (b.especial) return false;
+  return (b.descanso||[]).includes(fechaActual.getDay());
+}
+
+function actualizarFecha(){
+  const d = fechaActual;
+  document.getElementById('date-label').textContent = `${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const diff = Math.round((d - hoy) / 86400000);
+  document.getElementById('date-sub').textContent = diff===0?'Hoy':diff===1?'Mañana':diff===-1?'Ayer':'';
+  const n = new Date();
+  document.getElementById('fecha-header').textContent = `${DIAS_N[n.getDay()]}, ${n.getDate()} de ${MESES[n.getMonth()]}`;
+}
+
+// ---- Barberos desde Firestore ----
+async function seedBarberosDefault(){
+  if (seeding) return;
+  seeding = true;
+  for (const b of BARBEROS_SEED) { await addDoc(collection(db,'barberos'), b); }
+  seeding = false;
+}
+
+function escucharBarberos(){
+  if (unsubBarberos) unsubBarberos();
+  unsubBarberos = onSnapshot(query(collection(db,'barberos'), orderBy('orden')), async snap => {
+    if (snap.empty && !seeding) { await seedBarberosDefault(); return; }
+    BARBEROS_ALL = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    BARBEROS = BARBEROS_ALL.filter(b => b.activo !== false);
+    renderGrid();
+    renderBarberosPanel();
+  });
+}
+
+function escucharCitas(){
+  if (unsubCitas) unsubCitas();
+  unsubCitas = onSnapshot(query(collection(db,'citas'), where('fecha','==',getDateKey(fechaActual))), snap => {
+    citas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderGrid();
+    verificarConfirmaciones();
+  });
+  if (unsubSolicitudes) unsubSolicitudes();
+  unsubSolicitudes = onSnapshot(query(collection(db,'solicitudes'), where('fecha','==',getDateKey(fechaActual)), where('estado','==','pendiente')), snap => {
+    solicitudes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderGrid();
+    if (solicitudes.length > 0 && Notification.permission === 'granted') {
+      new Notification('Barbería Garage', { body: `${solicitudes.length} solicitud(es) pendiente(s) de aprobación`, icon: '/favicon.ico' });
+    }
+  });
+  if (Notification.permission === 'default') Notification.requestPermission();
+}
+
+function estaEnHorario(b, slot){
+  const m = slotToMin(slot);
+  return m >= slotToMin(b.inicio) && m < slotToMin(b.fin);
+}
+
+function getCitaEnSlot(bNombre, slot){
+  const sm = slotToMin(slot);
+  return citas.find(c => {
+    if (c.barbero !== bNombre) return false;
+    const ini = slotToMin(c.slot);
+    const fin = ini + (c.slots||1)*30;
+    return sm >= ini && sm < fin;
+  });
+}
+
+function verificarConfirmaciones(){
+  const ahora = new Date();
+  const ahoraMin = ahora.getHours()*60 + ahora.getMinutes();
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  if (fechaActual.getTime() !== hoy.getTime()) return;
+  citas.forEach(c => {
+    if (c.tipo==='bloqueado' || c.tipo==='cancelado') return;
+    const citaMin = slotToMin(c.slot);
+    if (ahoraMin >= citaMin && ahoraMin < citaMin+30 && !c.confirmado) { /* la burbuja se pinta en renderGrid */ }
+  });
+}
+
+function renderGrid(){
+  const thead = document.getElementById('agenda-thead');
+  const tbody = document.getElementById('agenda-tbody');
+  const ahora = new Date();
+  const ahoraMin = ahora.getHours()*60 + ahora.getMinutes();
+  const esHoy = fechaActual.getTime() === new Date().setHours(0,0,0,0);
+
+  if (!BARBEROS.length) {
+    thead.innerHTML = '';
+    tbody.innerHTML = `<tr><td class="cargando-barberos">Cargando barberos...</td></tr>`;
+    return;
+  }
+
+  // THEAD
+  let thHtml = '<tr><th class="hora-th"></th>';
+  BARBEROS.forEach(b => {
+    const desc = estaDescansandoReal(b);
+    const overrideKey = getOverrideKey(b.nombre);
+    const tieneOverride = descansoOverrides[overrideKey];
+    thHtml += `<th>
+      <div class="th-nombre">${b.nombre}${b.vip?' ⭐':''}</div>
+      ${desc && !tieneOverride
+        ? `<div class="th-descanso">Descanso <button onclick="activarDia('${b.nombre}')" style="font-size:10px;background:#1a1a1a;border:1px solid #333;color:#f59e0b;border-radius:4px;padding:1px 6px;cursor:pointer;margin-left:4px;">Trabaja hoy</button></div>`
+        : b.especial ? '<div class="th-especial">Verificar disponibilidad</div>'
+        : `<div class="th-horario">${slot12hr(b.inicio)} – ${slot12hr(b.fin)}</div>`}
+    </th>`;
+  });
+  thHtml += '</tr>';
+  thead.innerHTML = thHtml;
+
+  // TBODY
+  let tbHtml = '';
+  ALL_SLOTS.forEach(slot => {
+    const [ , m ] = slot.split(':').map(Number);
+    const esEntera = m === 0;
+    const slotMin = slotToMin(slot);
+    tbHtml += `<tr><td class="hora-cell"><span class="hora-txt${esEntera?' entera':''}">${slot12hr(slot)}</span></td>`;
+
+    BARBEROS.forEach(b => {
+      const desc = estaDescansandoReal(b);
+      const enHorario = estaEnHorario(b, slot);
+      if (desc || !enHorario) { tbHtml += `<td class="slot fuera"></td>`; return; }
+
+      const cita = getCitaEnSlot(b.nombre, slot);
+      if (cita) {
+        if (cita.slot === slot) {
+          const h2 = (cita.slots||1)*38 - 4;
+          const cls = `cita-${cita.tipo||'libre'}`;
+          const necesitaConfirm = esHoy && slotMin<=ahoraMin && slotMin+30>ahoraMin && cita.tipo!=='bloqueado' && cita.tipo!=='cancelado' && !cita.confirmado;
+          tbHtml += `<td class="slot${esEntera?' hora-entera':''}">
+            <div class="cita ${cls}" style="height:${h2}px" onclick="abrirEditar('${cita.id}',event)">
+              ${necesitaConfirm ? '<div class="burbuja"></div>' : ''}
+              <div class="cita-nombre">${cita.tipo==='bloqueado' ? '🔒 '+(cita.motivo||'Bloqueado') : cita.nombre||''}</div>
+              ${cita.tipo!=='bloqueado' ? `<div class="cita-servicio">${cita.servicio||''}</div>` : ''}
+              <div class="cita-hora-txt">${slot12hr(cita.slot)}${cita.comentario ? ` · ${cita.comentario}` : ''}</div>
+            </div>
+          </td>`;
+        } else {
+          tbHtml += `<td class="slot${esEntera?' hora-entera':''}"></td>`;
+        }
+      } else {
+        const sol = solicitudes.find(s => {
+          if (s.barbero !== b.nombre) return false;
+          const si = slotToMin(s.slot); return slotMin>=si && slotMin<si+(s.slots||1)*30;
+        });
+        if (sol && sol.slot === slot) {
+          const h2 = (sol.slots||1)*38 - 4;
+          tbHtml += `<td class="slot${esEntera?' hora-entera':''}">
+            <div class="cita" style="height:${h2}px;background:#1a1200;border-left:3px solid #f59e0b;cursor:pointer;" onclick="abrirSolicitud('${sol.id}',event)">
+              <div class="cita-nombre" style="color:#f59e0b;">⏳ ${sol.nombre||''}</div>
+              <div class="cita-servicio">${sol.servicio||''}</div>
+              <div class="cita-hora-txt">${slot12hr(sol.slot)} · Pendiente</div>
+            </div>
+          </td>`;
+        } else if (sol) {
+          tbHtml += `<td class="slot${esEntera?' hora-entera':''}"></td>`;
+        } else {
+          tbHtml += `<td class="slot${esEntera?' hora-entera':''}" onclick="abrirNueva('${b.nombre}','${slot}')"></td>`;
+        }
+      }
+    });
+    tbHtml += `</tr>`;
+  });
+  tbody.innerHTML = tbHtml;
+}
+
+window.selTipo = function(tipo){
+  tipoSel = tipo;
+  ['libre','fijo','bloqueado','cancelado'].forEach(t => {
+    const btn = document.getElementById('tb-'+t);
+    btn.className = 'tipo-btn' + (t===tipo ? ` sel-${t}` : '');
+  });
+  document.getElementById('form-cita').style.display = tipo==='bloqueado' ? 'none' : 'block';
+  document.getElementById('form-bloqueo').style.display = tipo==='bloqueado' ? 'block' : 'none';
+  if (tipo !== 'bloqueado') cargarServicios();
+};
+
+function cargarServicios(){
+  const sel = document.getElementById('f-servicio');
+  const b = BARBEROS.find(x => x.nombre === barberoSel);
+  const base = (b && b.vip) ? SERVICIOS_EDSON : SERVICIOS_REG;
+  const lista = (b && b.ondulado) ? [...base, SERVICIO_ONDULADO] : base;
+  sel.innerHTML = lista.map(s => `<option value="${s.n}" data-s="${s.s}">${s.n}</option>`).join('');
+  autoSlots();
+}
+
+window.autoSlots = function(){
+  const sel = document.getElementById('f-servicio');
+  if (!sel.options[sel.selectedIndex]) return;
+  document.getElementById('f-slots').value = sel.options[sel.selectedIndex].dataset.s || '1';
+};
+
+window.abrirNueva = function(barbero, slot){
+  modoModal='nueva'; editId=null; barberoSel=barbero; slotSel=slot;
+  const b = BARBEROS.find(x => x.nombre === barbero);
+  const defaultTipo = (b && b.vip) ? 'fijo' : 'libre';
+  document.getElementById('modal-title').textContent = 'Nueva cita';
+  document.getElementById('f-nombre').value = '';
+  document.getElementById('f-telefono').value = '';
+  document.getElementById('f-comentario').value = '';
+  document.getElementById('f-motivo').value = '';
+  document.getElementById('btns-nueva').style.display = 'flex';
+  document.getElementById('btns-editar').style.display = 'none';
+  setCtx(barbero, slot);
+  selTipo(defaultTipo);
+  cargarServicios();
+  document.getElementById('modal-overlay').classList.add('open');
+};
+
+window.abrirEditar = function(id, e){
+  e.stopPropagation();
+  const c = citas.find(x => x.id===id); if (!c) return;
+  modoModal='editar'; editId=id; barberoSel=c.barbero; slotSel=c.slot;
+  document.getElementById('modal-title').textContent = 'Editar cita';
+  document.getElementById('btns-nueva').style.display = 'none';
+  document.getElementById('btns-editar').style.display = 'flex';
+  setCtx(c.barbero, c.slot);
+  selTipo(c.tipo || 'libre');
+  cargarServicios();
+  if (c.tipo !== 'bloqueado') {
+    document.getElementById('f-nombre').value = c.nombre || '';
+    document.getElementById('f-telefono').value = c.telefono || '';
+    document.getElementById('f-comentario').value = c.comentario || '';
+    document.getElementById('f-servicio').value = c.servicio || '';
+    document.getElementById('f-slots').value = c.slots || 1;
+  } else {
+    document.getElementById('f-motivo').value = c.motivo || '';
+    document.getElementById('f-slots-bloqueo').value = c.slots || 1;
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+};
+
+function setCtx(barbero, slot){
+  const d = fechaActual;
+  document.getElementById('ctx-dia').textContent = `${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+  document.getElementById('ctx-hora').textContent = slot12hr(slot);
+  document.getElementById('ctx-barbero').textContent = `Barbero: ${barbero}`;
+}
+
+window.cerrarModal = function(){ document.getElementById('modal-overlay').classList.remove('open'); };
+
+window.guardarCita = async function(){
+  const tipo = tipoSel;
+  const fecha = getDateKey(fechaActual);
+  let data = { barbero: barberoSel, slot: slotSel, tipo, fecha, confirmado: false };
+  if (tipo === 'bloqueado') {
+    data.motivo = document.getElementById('f-motivo').value.trim() || 'Bloqueado';
+    data.slots = parseInt(document.getElementById('f-slots-bloqueo').value) || 1;
+  } else {
+    const nombre = document.getElementById('f-nombre').value.trim();
+    if (!nombre && tipo!=='cancelado') { showToast('Ingresa el nombre del cliente'); return; }
+    data.nombre = nombre;
+    data.telefono = document.getElementById('f-telefono').value.trim();
+    data.servicio = document.getElementById('f-servicio').value;
+    data.slots = parseInt(document.getElementById('f-slots').value) || 1;
+    data.comentario = document.getElementById('f-comentario').value.trim();
+  }
+  try {
+    if (modoModal==='editar' && editId) { await updateDoc(doc(db,'citas',editId), data); showToast('Cita actualizada'); }
+    else { await addDoc(collection(db,'citas'), data); showToast('Cita agendada'); }
+    cerrarModal();
+  } catch(e) { showToast('Error al guardar'); }
+};
+
+window.eliminarCita = async function(){
+  if (!editId) return;
+  if (!confirm('¿Eliminar esta cita?')) return;
+  await deleteDoc(doc(db,'citas',editId));
+  showToast('Cita eliminada'); cerrarModal();
+};
+
+window.marcarNoShow = async function(){
+  if (!editId) return;
+  await updateDoc(doc(db,'citas',editId), { tipo:'cancelado', confirmado:true });
+  showToast('Marcado como no llegó'); cerrarModal();
+};
+
+window.abrirSolicitud = function(id, e){
+  e.stopPropagation();
+  const sol = solicitudes.find(s => s.id===id); if (!sol) return;
+  if (confirm(`SOLICITUD PENDIENTE
+
+Cliente: ${sol.nombre}
+Servicio: ${sol.servicio}
+Horario: ${slot12hr(sol.slot)}
+Teléfono: ${sol.telefono||'No proporcionó'}
+${sol.comentario?'Comentario: '+sol.comentario:''}
+
+¿Aprobar esta cita?`)) {
+    updateDoc(doc(db,'solicitudes',id), { estado:'aprobada' }).then(() => {
+      addDoc(collection(db,'citas'), {
+        barbero: sol.barbero, nombre: sol.nombre, servicio: sol.servicio,
+        slots: sol.slots, slot: sol.slot, fecha: sol.fecha,
+        telefono: sol.telefono||'', comentario: sol.comentario||'',
+        tipo: sol.barberoPreferido ? 'fijo' : 'libre', confirmado:false, ts:Date.now()
+      });
+    });
+    showToast('Cita aprobada ✓');
+  } else if (confirm('¿Rechazar esta solicitud?')) {
+    updateDoc(doc(db,'solicitudes',id), { estado:'rechazada' });
+    showToast('Solicitud rechazada');
+  }
+};
+
+window.activarDia = function(nombre){
+  const key = getOverrideKey(nombre);
+  descansoOverrides[key] = true;
+  renderGrid();
+  showToast(`${nombre} trabajará hoy`);
+};
+
+// ---- Panel de barberos ----
+window.abrirSettings = function(){ document.getElementById('settings-overlay').classList.add('open'); };
+window.cerrarSettings = function(){ document.getElementById('settings-overlay').classList.remove('open'); };
+
+function renderBarberosPanel(){
+  const cont = document.getElementById('barberos-lista');
+  if (!BARBEROS_ALL.length) { cont.innerHTML = '<div class="empty-barberos">Aún no hay barberos.</div>'; return; }
+  cont.innerHTML = BARBEROS_ALL.map(b => {
+    const diasDesc = (b.descanso||[]).map(n => DIAS_CORTO[n]).join(', ') || 'Ninguno';
+    return `
+    <div class="barbero-card${b.activo===false?' inactivo':''}">
+      <div>
+        <div class="b-nombre">${b.nombre}</div>
+        <div class="b-detalle">${slot12hr(b.inicio)} – ${slot12hr(b.fin)} · Descansa: ${diasDesc}</div>
+        <div class="barbero-tags">
+          ${b.vip?'<span class="tag vip">VIP</span>':''}
+          ${b.especial?'<span class="tag especial">Horario flexible</span>':''}
+          ${b.ondulado?'<span class="tag ondulado">Ondulado</span>':''}
+          ${b.activo===false?'<span class="tag inactivo">Inactivo</span>':''}
+        </div>
+      </div>
+      <div class="barbero-actions">
+        <button class="icon-btn" onclick="abrirFormBarbero('${b.id}')" title="Editar">✏️</button>
+        <button class="icon-btn danger" onclick="eliminarBarbero('${b.id}','${b.nombre}')" title="Eliminar">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let bfEditId = null;
+let bfDescanso = [];
+let bfFlags = { vip:false, especial:false, ondulado:false, activo:true };
+
+function renderDiasChips(){
+  const cont = document.getElementById('bf-dias');
+  cont.innerHTML = DIAS_CORTO.map((d,i) => `<div class="dia-chip${bfDescanso.includes(i)?' sel':''}" onclick="toggleDia(${i})">${d}</div>`).join('');
+}
+window.toggleDia = function(n){
+  bfDescanso = bfDescanso.includes(n) ? bfDescanso.filter(x=>x!==n) : [...bfDescanso, n];
+  renderDiasChips();
+};
+
+function actualizarFlagBotones(){
+  ['vip','especial','ondulado','activo'].forEach(f => {
+    document.getElementById('bf-'+f).className = 'tipo-btn' + (bfFlags[f] ? ' sel-flag' : '');
+  });
+}
+window.toggleFlag = function(f){ bfFlags[f] = !bfFlags[f]; actualizarFlagBotones(); };
+
+window.abrirFormBarbero = function(id){
+  bfEditId = id || null;
+  if (id) {
+    const b = BARBEROS_ALL.find(x => x.id===id);
+    document.getElementById('barbero-form-title').textContent = 'Editar barbero';
+    document.getElementById('bf-nombre').value = b.nombre;
+    document.getElementById('bf-inicio').value = b.inicio;
+    document.getElementById('bf-fin').value = b.fin;
+    bfDescanso = [...(b.descanso||[])];
+    bfFlags = { vip:!!b.vip, especial:!!b.especial, ondulado:!!b.ondulado, activo: b.activo!==false };
+  } else {
+    document.getElementById('barbero-form-title').textContent = 'Nuevo barbero';
+    document.getElementById('bf-nombre').value = '';
+    document.getElementById('bf-inicio').value = '11:00';
+    document.getElementById('bf-fin').value = '20:00';
+    bfDescanso = [];
+    bfFlags = { vip:false, especial:false, ondulado:false, activo:true };
+  }
+  renderDiasChips();
+  actualizarFlagBotones();
+  document.getElementById('barbero-form-overlay').classList.add('open');
+};
+
+window.cerrarFormBarbero = function(){ document.getElementById('barbero-form-overlay').classList.remove('open'); };
+
+window.guardarBarbero = async function(){
+  const nombre = document.getElementById('bf-nombre').value.trim();
+  if (!nombre) { showToast('Ingresa el nombre del barbero'); return; }
+  const data = {
+    nombre,
+    inicio: document.getElementById('bf-inicio').value,
+    fin: document.getElementById('bf-fin').value,
+    descanso: bfDescanso,
+    vip: bfFlags.vip,
+    especial: bfFlags.especial,
+    ondulado: bfFlags.ondulado,
+    activo: bfFlags.activo,
+  };
+  try {
+    if (bfEditId) {
+      await updateDoc(doc(db,'barberos',bfEditId), data);
+      showToast('Barbero actualizado');
+    } else {
+      const maxOrden = BARBEROS_ALL.length ? Math.max(...BARBEROS_ALL.map(b=>b.orden||0)) : -1;
+      data.orden = maxOrden + 1;
+      await addDoc(collection(db,'barberos'), data);
+      showToast('Barbero agregado');
+    }
+    cerrarFormBarbero();
+  } catch(e) { showToast('Error al guardar barbero'); }
+};
+
+window.eliminarBarbero = async function(id, nombre){
+  if (!confirm(`¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`)) return;
+  await deleteDoc(doc(db,'barberos',id));
+  showToast('Barbero eliminado');
+};
+
+// ---- Eventos ----
+document.getElementById('prev-day').onclick = () => { fechaActual.setDate(fechaActual.getDate()-1); actualizarFecha(); escucharCitas(); };
+document.getElementById('next-day').onclick = () => { fechaActual.setDate(fechaActual.getDate()+1); actualizarFecha(); escucharCitas(); };
+document.getElementById('hoy-btn').onclick = () => { fechaActual = new Date(); fechaActual.setHours(0,0,0,0); actualizarFecha(); escucharCitas(); };
+document.getElementById('btn-settings').onclick = () => abrirSettings();
+
+actualizarFecha();
+escucharBarberos();
+escucharCitas();
+
+setInterval(() => { renderGrid(); verificarConfirmaciones(); }, 60000);
+</script>
+<a href="https://wa.me/522223961602" target="_blank" style="position:fixed;bottom:1.5rem;right:1rem;width:52px;height:52px;background:#25d366;border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 4px 12px rgba(37,211,102,.4);z-index:50;font-size:26px;transition:transform .15s ease;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">💬</a>
+</body>
+</html>
