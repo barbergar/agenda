@@ -43,8 +43,8 @@
     .srv-card.selected { border-color: #f0f0f0; background: #222; }
     .srv-nombre { font-size: 13px; font-weight: 600; color: #f0f0f0; padding-right: 16px; }
     .srv-duracion { font-size: 11px; color: #555; margin-top: 3px; }
-    .info-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #555; font-size: 15px; cursor: pointer; padding: 2px 4px; line-height: 1; transition: color .15s ease; }
-    .info-btn:hover { color: #f0f0f0; }
+    .info-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #f59e0b; font-size: 16px; cursor: pointer; padding: 2px 4px; line-height: 1; transition: all .15s ease; }
+    .info-btn:hover { color: #ffb84d; transform: scale(1.12); }
     .srv-desc { margin-top: 7px; font-size: 11px; color: #999; line-height: 1.5; border-top: 1px solid #2a2a2a; padding-top: 7px; display: none; }
     .srv-desc.open { display: block; }
     .sep-label { grid-column: 1/-1; font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 0 2px; border-top: 1px solid #1e1e1e; margin-top: 4px; }
@@ -274,22 +274,31 @@ function escucharBarberos(){
 
 function escucharServicios(){
   if (unsubServicios) unsubServicios();
-  unsubServicios = onSnapshot(collection(db,'servicios'), snap => {
+  unsubServicios = onSnapshot(query(collection(db,'servicios'), orderBy('orden')), snap => {
     SERVICIOS = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(s => s.activo !== false);
     renderServiciosGrid();
   });
+}
+
+// Mismo orden que en la Agenda interna: primer servicio, paquetes, resto de servicios, Ondulado al final
+function ordenarServicios(lista){
+  const paquetes = lista.filter(s => s.esPaquete).sort((a,b) => (a.orden||0)-(b.orden||0));
+  const individuales = lista.filter(s => !s.esPaquete && s.nombre!=='Ondulado').sort((a,b) => (a.orden||0)-(b.orden||0));
+  const ondulado = lista.filter(s => s.nombre==='Ondulado');
+  if (individuales.length <= 1) return [...individuales, ...paquetes, ...ondulado];
+  return [individuales[0], ...paquetes, ...individuales.slice(1), ...ondulado];
 }
 
 // ---- PASO 1: Servicios ----
 function renderServiciosGrid(){
   const grid = document.getElementById('servicios-grid');
   if (!SERVICIOS.length) { grid.innerHTML = '<div class="loading-inline">Cargando servicios...</div>'; return; }
-  const individuales = SERVICIOS.filter(s => !s.esPaquete).sort((a,b)=>(a.orden||0)-(b.orden||0));
-  const paquetes = SERVICIOS.filter(s => s.esPaquete).sort((a,b)=>(a.orden||0)-(b.orden||0));
+  const ordenados = ordenarServicios(SERVICIOS);
   grid.innerHTML = '';
   let sepPuesto = false;
-  [...individuales, ...paquetes].forEach((s, i) => {
-    if (s.esPaquete && !sepPuesto && paquetes.length) {
+  const primerPaqueteIdx = ordenados.findIndex(s => s.esPaquete);
+  ordenados.forEach((s, i) => {
+    if (i === primerPaqueteIdx && !sepPuesto && primerPaqueteIdx !== -1) {
       const sep = document.createElement('div'); sep.className='sep-label'; sep.textContent='Paquetes'; grid.appendChild(sep);
       sepPuesto = true;
     }
@@ -403,8 +412,9 @@ async function cargarHorarios(){
   snapOv.docs.forEach(d => { overridesHoy[d.data().barbero] = d.data(); });
 
   const slotsNecesarios = selServicio.slots;
+  const elegibleServicio = b => !selServicio.barberosPermitidos || selServicio.barberosPermitidos.length===0 || selServicio.barberosPermitidos.includes(b.nombre);
   const candidatos = prefBarbero==='cualquiera'
-    ? BARBEROS.filter(b => !selServicio.barberosPermitidos || selServicio.barberosPermitidos.length===0 || selServicio.barberosPermitidos.includes(b.nombre))
+    ? BARBEROS.filter(b => elegibleServicio(b) && !b.soloDirecto)
     : BARBEROS.filter(b => b.nombre===prefBarbero);
 
   const slotsDisp = [];
@@ -415,11 +425,17 @@ async function cargarHorarios(){
   const ahoraMin = ahora.getHours()*60 + ahora.getMinutes();
   const esHoy = getDateKey(selFecha) === getDateKey(new Date());
 
+  // Ventana pública: Lun-Sáb 11:00am-8:00pm (última cita 7:30pm) · Domingo 12:00pm-5:00pm (última cita 4:30pm)
+  const esDomingo = diaSem === 0;
+  const pubInicio = esDomingo ? 12*60 : 11*60;
+  const pubUltimaHora = esDomingo ? 16*60+30 : 19*60+30;
+  const pubCierre = esDomingo ? 17*60 : 20*60;
+
   allSlots.forEach(slot => {
     const slotMin = slotToMin(slot);
-    if (slotMin < 11*60) return;
-    if (slotMin + slotsNecesarios*30 > 20*60) return;
-    if (slotMin > 19*60+30) return;
+    if (slotMin < pubInicio) return;
+    if (slotMin + slotsNecesarios*30 > pubCierre) return;
+    if (slotMin > pubUltimaHora) return;
     if (esHoy && slotMin <= ahoraMin) return;
 
     const libre = candidatos.find(b => {
