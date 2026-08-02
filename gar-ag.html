@@ -161,6 +161,7 @@
   <div class="header">
     <div><div class="header-title">Barbería Garage — Agenda</div><div class="header-sub" id="fecha-header"></div></div>
     <div class="header-right">
+      <button class="gear-btn" id="btn-webavisos" title="Avisos de web" style="position:relative;" onclick="abrirPanelAvisos()">🔔<span id="web-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;line-height:16px;border-radius:8px;padding:0 3px;">0</span></button>
       <button class="gear-btn" id="btn-settings" title="Barberos">⚙️</button>
     </div>
   </div>
@@ -440,9 +441,64 @@ function slotToMin(s){ const [h,m]=s.split(':').map(Number); return h*60+m; }
 function getDateKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
 
+function actualizarBadge(){
+  const badge = document.getElementById('web-badge');
+  if (!badge) return;
+  const n = avisosWeb.length;
+  badge.textContent = n;
+  badge.style.display = n>0 ? 'block' : 'none';
+}
+window.abrirPanelAvisos = function(){
+  let panel = document.getElementById('panel-avisos');
+  if (panel) { panel.remove(); return; }
+  panel = document.createElement('div');
+  panel.id = 'panel-avisos';
+  panel.style.cssText = 'position:fixed;top:60px;right:12px;width:320px;max-height:70vh;overflow-y:auto;background:#141414;border:1px solid #333;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.6);z-index:300;padding:12px;';
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-weight:800;color:#f0f0f0;font-size:14px;">🔔 Avisos de web</span>';
+  html += '<span onclick="limpiarAvisos()" style="font-size:11px;color:#888;cursor:pointer;">Limpiar todo</span></div>';
+  if (avisosWeb.length===0) {
+    html += '<div style="color:#666;font-size:13px;text-align:center;padding:20px 0;">Sin avisos nuevos</div>';
+  } else {
+    avisosWeb.forEach(a => {
+      const esYami = a.tipo==='yami';
+      const color = esYami ? '#f59e0b' : '#22c55e';
+      const etq = esYami ? '⏳ Por confirmar' : '✅ Agendada';
+      const tel = a.telefono ? `<div style="font-size:11px;color:#888;margin-top:2px;">📱 ${a.telefono}</div>` : '';
+      html += `<div style="border-left:3px solid ${color};background:#1c1c1c;border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+        <div style="font-size:11px;color:${color};font-weight:700;">${etq}</div>
+        <div style="font-size:13px;color:#f0f0f0;font-weight:600;margin-top:2px;">${a.nombre} · ${a.barbero}</div>
+        <div style="font-size:12px;color:#999;">${a.servicio||''} · ${slot12hr(a.slot)}</div>
+        ${tel}
+      </div>`;
+    });
+  }
+  panel.innerHTML = html;
+  document.body.appendChild(panel);
+};
+window.limpiarAvisos = function(){
+  avisosWeb = [];
+  actualizarBadge();
+  const p = document.getElementById('panel-avisos'); if (p) p.remove();
+};
+
 let fechaActual = new Date(); fechaActual.setHours(0,0,0,0);
 let citas = [];
 let solicitudes = [];
+// --- Avisos de web (citas directas + solicitudes Yami) ---
+let avisosWeb = [];              // {tipo:'directa'|'yami', nombre, barbero, slot, servicio, ts, id}
+let idsCitasVistas = null;       // Set de ids de citas ya conocidas (null = primera carga)
+let idsSolVistas = null;         // Set de ids de solicitudes ya conocidas
+function beep(){
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type='sine'; o.frequency.value=880;
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.4);
+    o.start(); o.stop(ctx.currentTime+0.4);
+  } catch(e){}
+}
 let unsubSolicitudes = null;
 let unsubCitas = null;
 let unsubBarberos = null;
@@ -605,12 +661,39 @@ function escucharCitas(){
   if (unsubCitas) unsubCitas();
   unsubCitas = onSnapshot(query(collection(db,'citas'), where('fecha','==',getDateKey(fechaActual))), snap => {
     citas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    // Detectar citas nuevas que vinieron de la web
+    const ids = new Set(citas.map(c=>c.id));
+    if (idsCitasVistas !== null) {
+      citas.forEach(c => {
+        if (!idsCitasVistas.has(c.id) && c.origen==='web') {
+          avisosWeb.unshift({ tipo:'directa', nombre:c.nombre, barbero:c.barbero, slot:c.slot, servicio:c.servicio, ts:c.ts||Date.now(), id:c.id });
+          showToast(`✅ Nueva cita de web: ${c.nombre} con ${c.barbero}`);
+          beep(); actualizarBadge();
+        }
+      });
+    }
+    idsCitasVistas = ids;
     renderGrid();
     verificarConfirmaciones();
   });
   if (unsubSolicitudes) unsubSolicitudes();
   unsubSolicitudes = onSnapshot(query(collection(db,'solicitudes'), where('fecha','==',getDateKey(fechaActual)), where('estado','==','pendiente')), snap => {
     solicitudes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    const ids = new Set(solicitudes.map(s=>s.id));
+    if (idsSolVistas !== null) {
+      solicitudes.forEach(s => {
+        if (!idsSolVistas.has(s.id)) {
+          avisosWeb.unshift({ tipo:'yami', nombre:s.nombre, barbero:s.barbero, slot:s.slot, servicio:s.servicio, telefono:s.telefono, ts:s.ts||Date.now(), id:s.id });
+          showToast(`⏳ ${s.nombre} pide cita con ${s.barbero} — por confirmar`);
+          beep(); actualizarBadge();
+        }
+      });
+    } else if (solicitudes.length > 0) {
+      // Primera carga: si ya había pendientes, ponlas en el panel sin sonar
+      solicitudes.forEach(s => avisosWeb.push({ tipo:'yami', nombre:s.nombre, barbero:s.barbero, slot:s.slot, servicio:s.servicio, telefono:s.telefono, ts:s.ts||Date.now(), id:s.id }));
+      actualizarBadge();
+    }
+    idsSolVistas = ids;
     renderGrid();
     if (solicitudes.length > 0 && Notification.permission === 'granted') {
       new Notification('Barbería Garage', { body: `${solicitudes.length} solicitud(es) pendiente(s) de aprobación`, icon: '/favicon.ico' });
@@ -904,12 +987,14 @@ ${sol.comentario?'Comentario: '+sol.comentario:''}
         barbero: sol.barbero, nombre: sol.nombre, servicio: sol.servicio,
         slots: sol.slots, slot: sol.slot, fecha: sol.fecha,
         telefono: sol.telefono||'', comentario: sol.comentario||'',
-        tipo: sol.barberoPreferido ? 'fijo' : 'libre', confirmado:false, ts:Date.now()
+        tipo: 'fijo', confirmado:false, origenAprobada:true, ts:Date.now()
       });
     });
+    avisosWeb = avisosWeb.filter(a => a.id !== id); actualizarBadge();
     showToast('Cita aprobada ✓');
   } else if (confirm('¿Rechazar esta solicitud?')) {
     updateDoc(doc(db,'solicitudes',id), { estado:'rechazada' });
+    avisosWeb = avisosWeb.filter(a => a.id !== id); actualizarBadge();
     showToast('Solicitud rechazada');
   }
 };
