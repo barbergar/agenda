@@ -107,6 +107,25 @@
     .pendiente-titulo { font-size: 15px; font-weight: 700; color: #f59e0b; margin-bottom: 0.25rem; }
     .pendiente-sub { font-size: 13px; color: #888; }
 
+    /* AVISO YAMI (paso 3) */
+    .aviso-yami { background: #1a1500; border: 1px solid #f59e0b; border-radius: 10px; padding: 0.75rem 1rem; margin-top: 1rem; animation: fadeIn .3s ease; }
+    .aviso-yami-titulo { font-size: 14px; font-weight: 700; color: #f59e0b; margin-bottom: 0.2rem; }
+    .aviso-yami-sub { font-size: 12px; color: #999; line-height: 1.5; }
+
+    /* TICKET (estilo caja) */
+    .ticket { width: 100%; max-width: 340px; margin: 0 auto 1.5rem; border-radius: 14px; overflow: hidden; text-align: left; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .ticket-head { padding: 1rem 1.25rem; text-align: center; }
+    .ticket-head.ok { background: linear-gradient(135deg,#0f5132,#146c43); }
+    .ticket-head.wait { background: linear-gradient(135deg,#7a5b00,#a97f00); }
+    .ticket-estado { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,.85); font-weight: 700; }
+    .ticket-estado-big { font-size: 19px; font-weight: 800; color: #fff; margin-top: 2px; }
+    .ticket-body { background: #141414; border: 1px solid #2a2a2a; border-top: none; padding: 1rem 1.25rem; }
+    .ticket-folio { text-align: center; font-size: 11px; color: #666; letter-spacing: 1px; margin-bottom: .75rem; border-bottom: 1px dashed #333; padding-bottom: .6rem; }
+    .ticket-row { display: flex; justify-content: space-between; gap: 12px; padding: .35rem 0; font-size: 13px; }
+    .ticket-lbl { color: #777; }
+    .ticket-val { color: #f0f0f0; font-weight: 600; text-align: right; }
+    .ticket-foot { border-top: 1px dashed #333; margin-top: .6rem; padding-top: .7rem; text-align: center; font-size: 12px; color: #888; line-height: 1.5; }
+
     .loading { text-align: center; padding: 2rem; color: #444; font-size: 14px; }
     .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #f0f0f0; color: #111; padding: 0.6rem 1.2rem; border-radius: 20px; font-size: 13px; z-index: 100; display: none; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
   </style>
@@ -150,6 +169,10 @@
     <div class="section-sub" id="horarios-sub">Horarios disponibles</div>
     <div class="barbero-toggle" id="barbero-toggle" onclick="mostrarBarberos()">¿Tienes un barbero de preferencia? <span class="toggle-link">Elegir</span></div>
     <div class="barb-chips" id="barbero-chips" style="display:none"></div>
+    <div class="aviso-yami" id="aviso-yami" style="display:none">
+      <div class="aviso-yami-titulo">⏳ Esta cita requiere confirmación</div>
+      <div class="aviso-yami-sub">Las citas con Yami quedan en espera hasta que recepción las confirme. Te contactaremos por WhatsApp.</div>
+    </div>
     <div id="horarios-contenido"><div class="loading">Cargando horarios...</div></div>
     <button class="btn-primary" id="btn-3" onclick="irPaso(4)" disabled style="margin-top:1rem">Continuar</button>
     <button class="btn-secondary" onclick="irPaso(2)">← Regresar</button>
@@ -174,12 +197,12 @@
   <div class="section" id="sec-5">
     <div class="section-title">Confirma tu cita</div>
     <div class="section-sub">Revisa los detalles antes de enviar</div>
-    <div class="pendiente-card">
+    <div class="pendiente-card" id="pendiente-card" style="display:none">
       <div class="pendiente-titulo">⏳ Sujeto a confirmación</div>
-      <div class="pendiente-sub">Tu cita quedará confirmada una vez que nuestro equipo la apruebe. Te avisaremos pronto.</div>
+      <div class="pendiente-sub">Las citas con Yami quedan en espera hasta que recepción las confirme. Te avisaremos por WhatsApp.</div>
     </div>
     <div class="resumen-card" id="resumen-card"></div>
-    <button class="btn-primary" onclick="enviarSolicitud()">Enviar solicitud</button>
+    <button class="btn-primary" id="btn-enviar" onclick="enviarSolicitud()">Confirmar cita</button>
     <button class="btn-secondary" onclick="irPaso(4)">← Regresar</button>
   </div>
 
@@ -388,6 +411,7 @@ window.elegirBarbero = function(nombre){
   prefBarbero = nombre;
   selSlot = null;
   document.getElementById('btn-3').disabled = true;
+  document.getElementById('aviso-yami').style.display = (nombre === 'Yami') ? 'block' : 'none';
   renderBarberoChips();
   cargarHorarios();
 };
@@ -503,6 +527,9 @@ function renderResumen(){
   const tel = document.getElementById('d-telefono').value.trim();
   const com = document.getElementById('d-comentario').value.trim();
   const d = selFecha;
+  const esYami = selBarbero === 'Yami';
+  document.getElementById('pendiente-card').style.display = esYami ? 'block' : 'none';
+  document.getElementById('btn-enviar').textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
   document.getElementById('resumen-card').innerHTML = `
     <div class="res-row"><span class="res-lbl">Servicio</span><span class="res-val">${selServicio.nombre}</span></div>
     <div class="res-row"><span class="res-lbl">Duración</span><span class="res-val">${duracionLabel(selServicio.slots)}</span></div>
@@ -516,35 +543,79 @@ function renderResumen(){
 }
 
 window.enviarSolicitud = async function(){
+  const btn = document.getElementById('btn-enviar');
   const nombre = document.getElementById('d-nombre').value.trim();
   const tel = document.getElementById('d-telefono').value.trim();
   const com = document.getElementById('d-comentario').value.trim();
   const d = selFecha;
+  const esYami = selBarbero === 'Yami';
+  const folio = 'GAR-' + Date.now().toString().slice(-6);
+
+  btn.disabled = true; btn.textContent = 'Enviando...';
 
   try {
-    await addDoc(collection(db,'solicitudes'), {
-      nombre, telefono: tel, comentario: com,
-      servicio: selServicio.nombre, slots: selServicio.slots,
-      fecha: getDateKey(d), slot: selSlot,
-      barbero: selBarbero,
-      barberoPreferido: prefBarbero!=='cualquiera' ? prefBarbero : null,
-      estado: 'pendiente', ts: Date.now()
-    });
+    if (esYami) {
+      // Yami: entra a la cola de confirmación (recepción la aprueba)
+      await addDoc(collection(db,'solicitudes'), {
+        nombre, telefono: tel, comentario: com,
+        servicio: selServicio.nombre, slots: selServicio.slots,
+        fecha: getDateKey(d), slot: selSlot,
+        barbero: selBarbero,
+        barberoPreferido: prefBarbero!=='cualquiera' ? prefBarbero : null,
+        estado: 'pendiente', origen: 'web', folio, ts: Date.now()
+      });
+    } else {
+      // Ale/Lupita/Noel/Edson: cita directa confirmada (como recepción)
+      await addDoc(collection(db,'citas'), {
+        nombre, telefono: tel, comentario: com,
+        servicio: selServicio.nombre, slots: selServicio.slots,
+        fecha: getDateKey(d), slot: selSlot,
+        barbero: selBarbero,
+        origen: 'web', folio, ts: Date.now()
+      });
+    }
 
-    document.getElementById('conf-resumen').innerHTML = `
-      <div class="res-row"><span class="res-lbl">Servicio</span><span class="res-val">${selServicio.nombre}</span></div>
-      <div class="res-row"><span class="res-lbl">Fecha</span><span class="res-val">${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}</span></div>
-      <div class="res-row"><span class="res-lbl">Horario solicitado</span><span class="res-val">${slot12hr(selSlot)}</span></div>
-      <div class="res-row"><span class="res-lbl">Barbero</span><span class="res-val">${selBarbero}</span></div>
-      <div class="res-row"><span class="res-lbl">Nombre</span><span class="res-val">${nombre}</span></div>
-    `;
-
+    renderTicket({ esYami, folio, nombre, tel, d });
     for (let i=1; i<=5; i++) document.getElementById('sec-'+i).className = 'section';
     document.getElementById('confirmacion').style.display = 'flex';
     document.querySelector('.steps').style.display = 'none';
 
-  } catch(e) { showToast('Error al enviar. Intenta de nuevo.'); }
+  } catch(e) {
+    showToast('Error al enviar. Intenta de nuevo.');
+    btn.disabled = false; btn.textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
+  }
 };
+
+function renderTicket({ esYami, folio, nombre, tel, d }){
+  const fecha = `${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+  const headClass = esYami ? 'wait' : 'ok';
+  const estadoChico = esYami ? 'En espera' : 'Confirmada';
+  const estadoGrande = esYami ? '⏳ Por confirmar' : '✅ ¡Cita confirmada!';
+  const foot = esYami
+    ? 'Tu cita con Yami quedó en la cola de recepción. En cuanto la confirmen te avisamos por WhatsApp.'
+    : 'Tu cita ya quedó agendada. Te esperamos. Si necesitas cambiarla, escríbenos por WhatsApp.';
+
+  document.getElementById('confirmacion').innerHTML = `
+    <div class="ticket">
+      <div class="ticket-head ${headClass}">
+        <div class="ticket-estado">${estadoChico}</div>
+        <div class="ticket-estado-big">${estadoGrande}</div>
+      </div>
+      <div class="ticket-body">
+        <div class="ticket-folio">FOLIO ${folio}</div>
+        <div class="ticket-row"><span class="ticket-lbl">Servicio</span><span class="ticket-val">${selServicio.nombre}</span></div>
+        <div class="ticket-row"><span class="ticket-lbl">Fecha</span><span class="ticket-val">${fecha}</span></div>
+        <div class="ticket-row"><span class="ticket-lbl">Horario</span><span class="ticket-val">${slot12hr(selSlot)}</span></div>
+        <div class="ticket-row"><span class="ticket-lbl">Barbero</span><span class="ticket-val">${selBarbero}</span></div>
+        <div class="ticket-row"><span class="ticket-lbl">Nombre</span><span class="ticket-val">${nombre}</span></div>
+        ${tel?`<div class="ticket-row"><span class="ticket-lbl">WhatsApp</span><span class="ticket-val">${tel}</span></div>`:''}
+        <div class="ticket-foot">${foot}</div>
+      </div>
+    </div>
+    <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;background:#25d366;color:#fff;">💬 Contactar por WhatsApp</a>
+    <button class="btn-primary" onclick="reiniciar()" style="margin-top:8px;">Agendar otra cita</button>
+  `;
+}
 
 window.reiniciar = function(){
   selServicio=null; selFecha=null; selSlot=null; selBarbero=null; prefBarbero='cualquiera'; barberoExpandido=false;
@@ -555,6 +626,7 @@ window.reiniciar = function(){
   document.getElementById('d-comentario').value = '';
   document.getElementById('btn-1').disabled = true;
   document.getElementById('btn-2').disabled = true;
+  const av = document.getElementById('aviso-yami'); if (av) av.style.display = 'none';
   document.getElementById('confirmacion').style.display = 'none';
   document.querySelector('.steps').style.display = 'flex';
   irPaso(1);
