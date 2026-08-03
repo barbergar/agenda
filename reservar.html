@@ -528,6 +528,7 @@ function renderResumen(){
   const com = document.getElementById('d-comentario').value.trim();
   const d = selFecha;
   const esYami = selBarbero === 'Yami';
+  const esLibre = prefBarbero === 'cualquiera';
   document.getElementById('pendiente-card').style.display = esYami ? 'block' : 'none';
   document.getElementById('btn-enviar').textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
   document.getElementById('resumen-card').innerHTML = `
@@ -535,7 +536,7 @@ function renderResumen(){
     <div class="res-row"><span class="res-lbl">Duración</span><span class="res-val">${duracionLabel(selServicio.slots)}</span></div>
     <div class="res-row"><span class="res-lbl">Fecha</span><span class="res-val">${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}</span></div>
     <div class="res-row"><span class="res-lbl">Horario</span><span class="res-val">${slot12hr(selSlot)}</span></div>
-    <div class="res-row"><span class="res-lbl">Barbero</span><span class="res-val">${selBarbero}</span></div>
+    <div class="res-row"><span class="res-lbl">Barbero</span><span class="res-val">${esLibre ? 'Libre (el primero disponible)' : selBarbero}</span></div>
     <div class="res-row"><span class="res-lbl">Nombre</span><span class="res-val">${nombre}</span></div>
     ${tel?`<div class="res-row"><span class="res-lbl">Teléfono</span><span class="res-val">${tel}</span></div>`:''}
     ${com?`<div class="res-row"><span class="res-lbl">Comentario</span><span class="res-val">${com}</span></div>`:''}
@@ -571,7 +572,9 @@ window.enviarSolicitud = async function(){
         servicio: selServicio.nombre, slots: selServicio.slots,
         fecha: getDateKey(d), slot: selSlot,
         barbero: selBarbero,
-        tipo: 'fijo', origen: 'web', folio, ts: Date.now()
+        tipo: (prefBarbero === 'cualquiera') ? 'libre' : 'fijo',
+        barberoPreferido: (prefBarbero === 'cualquiera') ? null : selBarbero,
+        origen: 'web', folio, ts: Date.now()
       });
     }
 
@@ -606,7 +609,7 @@ function renderTicket({ esYami, folio, nombre, tel, d }){
         <div class="ticket-row"><span class="ticket-lbl">Servicio</span><span class="ticket-val">${selServicio.nombre}</span></div>
         <div class="ticket-row"><span class="ticket-lbl">Fecha</span><span class="ticket-val">${fecha}</span></div>
         <div class="ticket-row"><span class="ticket-lbl">Horario</span><span class="ticket-val">${slot12hr(selSlot)}</span></div>
-        <div class="ticket-row"><span class="ticket-lbl">Barbero</span><span class="ticket-val">${selBarbero}</span></div>
+        <div class="ticket-row"><span class="ticket-lbl">Barbero</span><span class="ticket-val">${prefBarbero==='cualquiera' ? 'Libre' : selBarbero}</span></div>
         <div class="ticket-row"><span class="ticket-lbl">Nombre</span><span class="ticket-val">${nombre}</span></div>
         ${tel?`<div class="ticket-row"><span class="ticket-lbl">WhatsApp</span><span class="ticket-val">${tel}</span></div>`:''}
         <div class="ticket-foot">${foot}</div>
@@ -626,6 +629,9 @@ window.reiniciar = function(){
   document.getElementById('d-comentario').value = '';
   document.getElementById('btn-1').disabled = true;
   document.getElementById('btn-2').disabled = true;
+  document.getElementById('btn-3').disabled = true;
+  const be = document.getElementById('btn-enviar');
+  if (be) { be.disabled = false; be.textContent = 'Confirmar cita'; }
   const av = document.getElementById('aviso-yami'); if (av) av.style.display = 'none';
   document.getElementById('confirmacion').style.display = 'none';
   document.querySelector('.steps').style.display = 'flex';
