@@ -127,7 +127,7 @@
     .ticket-foot { border-top: 1px dashed #333; margin-top: .6rem; padding-top: .7rem; text-align: center; font-size: 12px; color: #888; line-height: 1.5; }
 
     .loading { text-align: center; padding: 2rem; color: #444; font-size: 14px; }
-    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #f0f0f0; color: #111; padding: 0.6rem 1.2rem; border-radius: 20px; font-size: 13px; z-index: 100; display: none; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #f0f0f0; color: #111; padding: 0.9rem 1.4rem; border-radius: 16px; font-size: 16px; line-height: 1.35; max-width: 88%; text-align: center; z-index: 100; display: none; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
   </style>
 </head>
 <body>
@@ -250,7 +250,8 @@ function slotToMin(s){ const [h,m]=s.split(':').map(Number); return h*60+m; }
 function minToSlot(m){ return `${String(Math.floor(m/60)).padStart(2,'0')}:${m%60===0?'00':'30'}`; }
 function slot12hr(s){ const [h,m]=s.split(':').map(Number); const ap=h>=12?'PM':'AM'; const h12=h%12||12; return `${h12}:${m===0?'00':'30'} ${ap}`; }
 function getDateKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
+let _toastTimer=null;
+function showToast(msg, ms=2500){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; if(_toastTimer) clearTimeout(_toastTimer); _toastTimer=setTimeout(()=>t.style.display='none',ms); }
 
 // ---- Horarios efectivos (respetan cierre anticipado / domingo especial / excepciones) ----
 function inicioEfectivo(b, dia){
@@ -574,7 +575,7 @@ window.enviarSolicitud = async function(){
       return iniRV < cFin && cIni < finRV; // ¿se traslapan?
     });
     if (seOcupo) {
-      showToast('Ese horario se acaba de ocupar 😕 Elige otro, por favor.');
+      showToast('Ese horario se acaba de ocupar 😕 Por favor elige otro.', 6000);
       btn.disabled = false;
       btn.textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
       window.irPaso(3); // lo regresamos a escoger hora (esto recarga la disponibilidad)
