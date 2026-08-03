@@ -162,6 +162,7 @@
     <div><div class="header-title">Barbería Garage — Agenda</div><div class="header-sub" id="fecha-header"></div></div>
     <div class="header-right">
       <button class="gear-btn" id="btn-webavisos" title="Avisos de web" style="position:relative;" onclick="abrirPanelAvisos()">🔔<span id="web-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;line-height:16px;border-radius:8px;padding:0 3px;">0</span></button>
+      <button class="gear-btn" id="btn-papelera" title="Papelera" onclick="abrirPapelera()">🗑</button>
       <button class="gear-btn" id="btn-settings" title="Barberos">⚙️</button>
     </div>
   </div>
@@ -711,6 +712,7 @@ function estaEnHorario(b, slot){
 function getCitaEnSlot(bNombre, slot){
   const sm = slotToMin(slot);
   return citas.find(c => {
+    if (c.estado === 'eliminada') return false;
     if (c.barbero !== bNombre) return false;
     const ini = slotToMin(c.slot);
     const fin = ini + (c.slots||1)*30;
@@ -935,9 +937,41 @@ window.guardarCita = async function(){
 
 window.eliminarCita = async function(){
   if (!editId) return;
-  if (!confirm('¿Eliminar esta cita?')) return;
-  await deleteDoc(doc(db,'citas',editId));
-  showToast('Cita eliminada'); cerrarModal();
+  if (!confirm('¿Enviar esta cita a la papelera? Podrás recuperarla.')) return;
+  await updateDoc(doc(db,'citas',editId), { estado:'eliminada', eliminadaTs: Date.now() });
+  showToast('Cita enviada a la papelera 🗑'); cerrarModal();
+};
+
+// --- PAPELERA (Fallo 2): recuperar citas borradas por error ---
+window.abrirPapelera = function(){
+  let panel = document.getElementById('panel-papelera');
+  if (panel) { panel.remove(); return; }
+  const borradas = citas.filter(c => c.estado === 'eliminada')
+                        .sort((a,b) => (b.eliminadaTs||0) - (a.eliminadaTs||0));
+  panel = document.createElement('div');
+  panel.id = 'panel-papelera';
+  panel.style.cssText = 'position:fixed;top:60px;right:12px;width:300px;max-height:70vh;overflow:auto;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:12px;z-index:300;box-shadow:0 10px 30px rgba(0,0,0,.5);';
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-weight:800;color:#f0f0f0;font-size:14px;">🗑 Papelera (hoy)</span>';
+  html += '<span onclick="document.getElementById(\'panel-papelera\').remove()" style="font-size:11px;color:#888;cursor:pointer;">Cerrar</span></div>';
+  if (borradas.length === 0) {
+    html += '<div style="color:#666;font-size:13px;text-align:center;padding:20px 0;">Sin citas borradas</div>';
+  } else {
+    borradas.forEach(c => {
+      html += `<div style="border:1px solid #333;border-radius:8px;padding:8px;margin-bottom:8px;">
+        <div style="color:#f0f0f0;font-size:13px;font-weight:700;">${c.nombre||'(sin nombre)'}</div>
+        <div style="color:#999;font-size:12px;">${slot12hr(c.slot)} · ${c.barbero} · ${c.servicio||''}</div>
+        <button onclick="restaurarCita('${c.id}')" style="margin-top:6px;width:100%;background:#22c55e;color:#04210f;border:none;border-radius:6px;padding:6px;font-weight:800;font-size:12px;cursor:pointer;">↩ Recuperar</button>
+      </div>`;
+    });
+  }
+  panel.innerHTML = html;
+  document.body.appendChild(panel);
+};
+
+window.restaurarCita = async function(id){
+  await updateDoc(doc(db,'citas',id), { estado:'activa' });
+  showToast('Cita recuperada ✓');
+  const p = document.getElementById('panel-papelera'); if (p) p.remove();
 };
 
 window.moverOtroBarbero = async function(){

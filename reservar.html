@@ -471,7 +471,7 @@ async function cargarHorarios(){
       if (slotMin < ini || slotMin + slotsNecesarios*30 > fin) return false;
       for (let s=0; s<slotsNecesarios; s++) {
         const checkMin = slotMin + s*30;
-        const ocupado = citasDia.some(c => c.barbero===b.nombre && checkMin>=slotToMin(c.slot) && checkMin<slotToMin(c.slot)+(c.slots||1)*30);
+        const ocupado = citasDia.some(c => c.barbero===b.nombre && c.tipo!=='cancelado' && c.estado!=='eliminada' && checkMin>=slotToMin(c.slot) && checkMin<slotToMin(c.slot)+(c.slots||1)*30);
         const reservado = solicitudesDia.some(c => c.barbero===b.nombre && checkMin>=slotToMin(c.slot) && checkMin<slotToMin(c.slot)+(c.slots||1)*30);
         if (ocupado || reservado) return false;
       }
