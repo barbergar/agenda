@@ -112,6 +112,15 @@
     .mb-noshow { background: #2d2200; color: #f59e0b; flex: 0.8; font-size: 12px; }
 
     .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #f0f0f0; color: #111; padding: 0.65rem 1.25rem; border-radius: 20px; font-size: 13px; z-index: 200; display: none; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+    .cola-avisos { position: fixed; top: 76px; right: 12px; width: 280px; max-height: calc(100vh - 100px); overflow-y: auto; z-index: 250; display: flex; flex-direction: column; gap: 10px; }
+    .cola-titulo { font-size: 12px; font-weight: 800; color: #888; letter-spacing: .5px; text-transform: uppercase; padding: 0 2px; }
+    .ticket-aviso { background: #141414; border: 1px solid #2a2a2a; border-left-width: 4px; border-radius: 10px; padding: 10px 12px; box-shadow: 0 6px 18px rgba(0,0,0,.4); animation: ticketIn .25s ease; }
+    @keyframes ticketIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+    .ticket-aviso .ta-etq { font-size: 11px; font-weight: 800; }
+    .ticket-aviso .ta-nombre { font-size: 14px; color: #f0f0f0; font-weight: 700; margin-top: 3px; }
+    .ticket-aviso .ta-sub { font-size: 12px; color: #999; margin-top: 1px; }
+    .ticket-aviso .ta-tel { font-size: 11px; color: #888; margin-top: 3px; }
+    .ticket-aviso .ta-btn { margin-top: 8px; width: 100%; border: none; border-radius: 7px; padding: 7px; font-weight: 800; font-size: 12px; cursor: pointer; }
 
     /* SETTINGS / BARBEROS PANEL */
     .settings-modal { max-width: 540px; }
@@ -161,7 +170,6 @@
   <div class="header">
     <div><div class="header-title">Barbería Garage — Agenda</div><div class="header-sub" id="fecha-header"></div></div>
     <div class="header-right">
-      <button class="gear-btn" id="btn-webavisos" title="Avisos de web" style="position:relative;" onclick="abrirPanelAvisos()">🔔<span id="web-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;line-height:16px;border-radius:8px;padding:0 3px;">0</span></button>
       <button class="gear-btn" id="btn-settings" title="Barberos">⚙️</button>
     </div>
   </div>
@@ -188,6 +196,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="cola-avisos" class="cola-avisos"></div>
 
 <!-- MODAL CITA -->
 <div class="modal-overlay" id="modal-overlay">
@@ -442,44 +451,33 @@ function slotToMin(s){ const [h,m]=s.split(':').map(Number); return h*60+m; }
 function getDateKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
 
-function actualizarBadge(){
-  const badge = document.getElementById('web-badge');
-  if (!badge) return;
-  const n = avisosWeb.length;
-  badge.textContent = n;
-  badge.style.display = n>0 ? 'block' : 'none';
+function renderColaAvisos(){
+  const cont = document.getElementById('cola-avisos');
+  if (!cont) return;
+  if (avisosWeb.length === 0) { cont.innerHTML = ''; return; }
+  let html = `<div class="cola-titulo">🎫 Avisos pendientes (${avisosWeb.length})</div>`;
+  avisosWeb.forEach(a => {
+    const esYami = a.tipo === 'yami';
+    const color = esYami ? '#f59e0b' : '#22c55e';
+    const etq = esYami ? '⏳ Por confirmar' : '✅ Agendada';
+    const tel = a.telefono ? `<div class="ta-tel">📱 ${a.telefono}</div>` : '';
+    const btnTxt = esYami ? 'Revisar' : 'Atender';
+    const btnBg = esYami ? '#f59e0b' : '#22c55e';
+    const btnFg = esYami ? '#2d1600' : '#04210f';
+    html += `<div class="ticket-aviso" style="border-left-color:${color}">
+      <div class="ta-etq" style="color:${color}">${etq}</div>
+      <div class="ta-nombre">${a.nombre} · ${a.barbero}</div>
+      <div class="ta-sub">${a.servicio||''} · ${slot12hr(a.slot)}</div>
+      ${tel}
+      <button class="ta-btn" style="background:${btnBg};color:${btnFg}" onclick="atenderAviso('${a.id}','${a.tipo}')">${btnTxt}</button>
+    </div>`;
+  });
+  cont.innerHTML = html;
 }
-window.abrirPanelAvisos = function(){
-  let panel = document.getElementById('panel-avisos');
-  if (panel) { panel.remove(); return; }
-  panel = document.createElement('div');
-  panel.id = 'panel-avisos';
-  panel.style.cssText = 'position:fixed;top:60px;right:12px;width:320px;max-height:70vh;overflow-y:auto;background:#141414;border:1px solid #333;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.6);z-index:300;padding:12px;';
-  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-weight:800;color:#f0f0f0;font-size:14px;">🔔 Avisos de web</span>';
-  html += '<span onclick="limpiarAvisos()" style="font-size:11px;color:#888;cursor:pointer;">Limpiar todo</span></div>';
-  if (avisosWeb.length===0) {
-    html += '<div style="color:#666;font-size:13px;text-align:center;padding:20px 0;">Sin avisos nuevos</div>';
-  } else {
-    avisosWeb.forEach(a => {
-      const esYami = a.tipo==='yami';
-      const color = esYami ? '#f59e0b' : '#22c55e';
-      const etq = esYami ? '⏳ Por confirmar' : '✅ Agendada';
-      const tel = a.telefono ? `<div style="font-size:11px;color:#888;margin-top:2px;">📱 ${a.telefono}</div>` : '';
-      html += `<div style="border-left:3px solid ${color};background:#1c1c1c;border-radius:8px;padding:8px 10px;margin-bottom:8px;">
-        <div style="font-size:11px;color:${color};font-weight:700;">${etq}</div>
-        <div style="font-size:13px;color:#f0f0f0;font-weight:600;margin-top:2px;">${a.nombre} · ${a.barbero}</div>
-        <div style="font-size:12px;color:#999;">${a.servicio||''} · ${slot12hr(a.slot)}</div>
-        ${tel}
-      </div>`;
-    });
-  }
-  panel.innerHTML = html;
-  document.body.appendChild(panel);
-};
-window.limpiarAvisos = function(){
-  avisosWeb = [];
-  actualizarBadge();
-  const p = document.getElementById('panel-avisos'); if (p) p.remove();
+window.atenderAviso = function(id, tipo){
+  if (tipo === 'yami') { decidirSolicitud(id); return; }
+  avisosWeb = avisosWeb.filter(a => a.id !== id);
+  renderColaAvisos();
 };
 
 let fechaActual = new Date(); fechaActual.setHours(0,0,0,0);
@@ -668,8 +666,7 @@ function escucharCitas(){
       citas.forEach(c => {
         if (!idsCitasVistas.has(c.id) && c.origen==='web') {
           avisosWeb.unshift({ tipo:'directa', nombre:c.nombre, barbero:c.barbero, slot:c.slot, servicio:c.servicio, ts:c.ts||Date.now(), id:c.id });
-          showToast(`✅ Nueva cita de web: ${c.nombre} con ${c.barbero}`);
-          beep(); actualizarBadge();
+          beep(); renderColaAvisos();
         }
       });
     }
@@ -685,14 +682,13 @@ function escucharCitas(){
       solicitudes.forEach(s => {
         if (!idsSolVistas.has(s.id)) {
           avisosWeb.unshift({ tipo:'yami', nombre:s.nombre, barbero:s.barbero, slot:s.slot, servicio:s.servicio, telefono:s.telefono, ts:s.ts||Date.now(), id:s.id });
-          showToast(`⏳ ${s.nombre} pide cita con ${s.barbero} — por confirmar`);
-          beep(); actualizarBadge();
+          beep(); renderColaAvisos();
         }
       });
     } else if (solicitudes.length > 0) {
-      // Primera carga: si ya había pendientes, ponlas en el panel sin sonar
+      // Primera carga: si ya había pendientes, ponlas en la cola sin sonar
       solicitudes.forEach(s => avisosWeb.push({ tipo:'yami', nombre:s.nombre, barbero:s.barbero, slot:s.slot, servicio:s.servicio, telefono:s.telefono, ts:s.ts||Date.now(), id:s.id }));
-      actualizarBadge();
+      renderColaAvisos();
     }
     idsSolVistas = ids;
     renderGrid();
@@ -1030,6 +1026,10 @@ window.marcarNoShow = async function(){
 
 window.abrirSolicitud = function(id, e){
   e.stopPropagation();
+  decidirSolicitud(id);
+};
+
+window.decidirSolicitud = function(id){
   const sol = solicitudes.find(s => s.id===id); if (!sol) return;
   if (confirm(`SOLICITUD PENDIENTE
 
@@ -1048,11 +1048,11 @@ ${sol.comentario?'Comentario: '+sol.comentario:''}
         tipo: 'fijo', confirmado:false, origenAprobada:true, ts:Date.now()
       });
     });
-    avisosWeb = avisosWeb.filter(a => a.id !== id); actualizarBadge();
+    avisosWeb = avisosWeb.filter(a => a.id !== id); renderColaAvisos();
     showToast('Cita aprobada ✓');
   } else if (confirm('¿Rechazar esta solicitud?')) {
     updateDoc(doc(db,'solicitudes',id), { estado:'rechazada' });
-    avisosWeb = avisosWeb.filter(a => a.id !== id); actualizarBadge();
+    avisosWeb = avisosWeb.filter(a => a.id !== id); renderColaAvisos();
     showToast('Solicitud rechazada');
   }
 };
