@@ -912,7 +912,9 @@ function setCtx(barbero, slot){
 window.cerrarModal = function(){ document.getElementById('modal-overlay').classList.remove('open'); };
 
 window.guardarCita = async function(){
-  const tipo = tipoSel;
+  let tipo = tipoSel;
+  const esEdson = barberoSel === 'Edson';
+  if (esEdson && tipo !== 'bloqueado' && tipo !== 'cancelado') tipo = 'fijo'; // Edson siempre queda fijo/azul
   const fecha = getDateKey(fechaActual);
   let data = { barbero: barberoSel, slot: slotSel, tipo, fecha, confirmado: false };
   if (tipo === 'bloqueado') {
@@ -949,6 +951,7 @@ window.moverOtroBarbero = async function(){
   const inicioMin = slotToMin(c.slot);
   const candidato = BARBEROS.find(b => {
     if (b.nombre === c.barbero) return false;
+    if (b.soloDirecto) return false; // Edson (y Yami) no reciben citas movidas automáticamente
     if (estaDescansandoReal(b)) return false;
     for (let i=0; i<duracion; i++){
       const s = minToSlot(inicioMin + i*30);

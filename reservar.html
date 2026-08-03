@@ -170,8 +170,9 @@
     <div class="barbero-toggle" id="barbero-toggle" onclick="mostrarBarberos()">¿Tienes un barbero de preferencia? <span class="toggle-link">Elegir</span></div>
     <div class="barb-chips" id="barbero-chips" style="display:none"></div>
     <div class="aviso-yami" id="aviso-yami" style="display:none">
-      <div class="aviso-yami-titulo">⏳ Esta cita requiere confirmación</div>
-      <div class="aviso-yami-sub">Las citas con Yami quedan en espera hasta que recepción las confirme. Te contactaremos por WhatsApp.</div>
+      <div class="aviso-yami-titulo">💬 Yami requiere agenda especial</div>
+      <div class="aviso-yami-sub">Sus días de trabajo cambian cada semana. Por favor envíanos WhatsApp para agendar con ella.</div>
+      <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:0.75rem;background:#25d366;color:#fff;">💬 Escribir por WhatsApp</a>
     </div>
     <div id="horarios-contenido"><div class="loading">Cargando horarios...</div></div>
     <button class="btn-primary" id="btn-3" onclick="irPaso(4)" disabled style="margin-top:1rem">Continuar</button>
@@ -411,9 +412,15 @@ function renderBarberoChips(){
 window.elegirBarbero = function(nombre){
   prefBarbero = nombre;
   selSlot = null;
+  const esYamiChip = (nombre === 'Yami');
+  document.getElementById('aviso-yami').style.display = esYamiChip ? 'block' : 'none';
   document.getElementById('btn-3').disabled = true;
-  document.getElementById('aviso-yami').style.display = (nombre === 'Yami') ? 'block' : 'none';
   renderBarberoChips();
+  if (esYamiChip) {
+    document.getElementById('horarios-contenido').innerHTML = '';
+    document.getElementById('horarios-sub').textContent = '';
+    return; // no se carga disponibilidad ni se puede continuar; solo WhatsApp
+  }
   cargarHorarios();
 };
 
