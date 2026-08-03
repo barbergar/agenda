@@ -555,6 +555,33 @@ window.enviarSolicitud = async function(){
   btn.disabled = true; btn.textContent = 'Enviando...';
 
   try {
+    // --- REVALIDACIÓN ANTI-DOBLE-RESERVA (Fallo 1) ---
+    // Volvemos a verificar que el hueco siga libre JUSTO antes de guardar,
+    // por si alguien lo ocupó mientras el cliente llenaba sus datos.
+    const keyRV = getDateKey(d);
+    const iniRV = slotToMin(selSlot);
+    const finRV = iniRV + selServicio.slots * 30;
+    const [snapCitasRV, snapSolRV] = await Promise.all([
+      getDocs(query(collection(db,'citas'), where('fecha','==',keyRV))),
+      getDocs(query(collection(db,'solicitudes'), where('fecha','==',keyRV), where('estado','in',['pendiente','aprobada'])))
+    ]);
+    const seOcupo = [...snapCitasRV.docs, ...snapSolRV.docs].some(docSnap => {
+      const c = docSnap.data();
+      if (c.barbero !== selBarbero) return false;
+      if (c.tipo === 'cancelado' || c.tipo === 'eliminada') return false; // huecos liberados no bloquean
+      const cIni = slotToMin(c.slot);
+      const cFin = cIni + (c.slots || 1) * 30;
+      return iniRV < cFin && cIni < finRV; // ¿se traslapan?
+    });
+    if (seOcupo) {
+      showToast('Ese horario se acaba de ocupar 😕 Elige otro, por favor.');
+      btn.disabled = false;
+      btn.textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
+      window.irPaso(3); // lo regresamos a escoger hora (esto recarga la disponibilidad)
+      return;
+    }
+    // --- fin revalidación ---
+
     if (esYami) {
       // Yami: entra a la cola de confirmación (recepción la aprueba)
       await addDoc(collection(db,'solicitudes'), {
