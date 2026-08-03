@@ -162,7 +162,6 @@
     <div><div class="header-title">Barbería Garage — Agenda</div><div class="header-sub" id="fecha-header"></div></div>
     <div class="header-right">
       <button class="gear-btn" id="btn-webavisos" title="Avisos de web" style="position:relative;" onclick="abrirPanelAvisos()">🔔<span id="web-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;line-height:16px;border-radius:8px;padding:0 3px;">0</span></button>
-      <button class="gear-btn" id="btn-papelera" title="Papelera" onclick="abrirPapelera()">🗑</button>
       <button class="gear-btn" id="btn-settings" title="Barberos">⚙️</button>
     </div>
   </div>
@@ -242,6 +241,7 @@
       <button class="mb mb-save" onclick="guardarCita()">Agendar</button>
     </div>
     <div id="mover-barbero-row" style="display:none;margin-bottom:8px;">
+      <button class="mb" style="width:100%;background:#1a1a1a;border:1px solid #2a2a2a;color:#f59e0b;margin-bottom:8px;" onclick="reagendar()">🕒 Re-agendar (cambiar horario)</button>
       <button class="mb" style="width:100%;background:#1a1a1a;border:1px solid #2a2a2a;color:#f59e0b;" onclick="moverOtroBarbero()">🔄 Mover a otro barbero libre</button>
     </div>
     <div class="modal-btns" id="btns-editar" style="display:none">
@@ -712,7 +712,6 @@ function estaEnHorario(b, slot){
 function getCitaEnSlot(bNombre, slot){
   const sm = slotToMin(slot);
   return citas.find(c => {
-    if (c.estado === 'eliminada') return false;
     if (c.barbero !== bNombre) return false;
     const ini = slotToMin(c.slot);
     const fin = ini + (c.slots||1)*30;
@@ -937,41 +936,9 @@ window.guardarCita = async function(){
 
 window.eliminarCita = async function(){
   if (!editId) return;
-  if (!confirm('¿Enviar esta cita a la papelera? Podrás recuperarla.')) return;
-  await updateDoc(doc(db,'citas',editId), { estado:'eliminada', eliminadaTs: Date.now() });
-  showToast('Cita enviada a la papelera 🗑'); cerrarModal();
-};
-
-// --- PAPELERA (Fallo 2): recuperar citas borradas por error ---
-window.abrirPapelera = function(){
-  let panel = document.getElementById('panel-papelera');
-  if (panel) { panel.remove(); return; }
-  const borradas = citas.filter(c => c.estado === 'eliminada')
-                        .sort((a,b) => (b.eliminadaTs||0) - (a.eliminadaTs||0));
-  panel = document.createElement('div');
-  panel.id = 'panel-papelera';
-  panel.style.cssText = 'position:fixed;top:60px;right:12px;width:300px;max-height:70vh;overflow:auto;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:12px;z-index:300;box-shadow:0 10px 30px rgba(0,0,0,.5);';
-  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-weight:800;color:#f0f0f0;font-size:14px;">🗑 Papelera (hoy)</span>';
-  html += '<span onclick="document.getElementById(\'panel-papelera\').remove()" style="font-size:11px;color:#888;cursor:pointer;">Cerrar</span></div>';
-  if (borradas.length === 0) {
-    html += '<div style="color:#666;font-size:13px;text-align:center;padding:20px 0;">Sin citas borradas</div>';
-  } else {
-    borradas.forEach(c => {
-      html += `<div style="border:1px solid #333;border-radius:8px;padding:8px;margin-bottom:8px;">
-        <div style="color:#f0f0f0;font-size:13px;font-weight:700;">${c.nombre||'(sin nombre)'}</div>
-        <div style="color:#999;font-size:12px;">${slot12hr(c.slot)} · ${c.barbero} · ${c.servicio||''}</div>
-        <button onclick="restaurarCita('${c.id}')" style="margin-top:6px;width:100%;background:#22c55e;color:#04210f;border:none;border-radius:6px;padding:6px;font-weight:800;font-size:12px;cursor:pointer;">↩ Recuperar</button>
-      </div>`;
-    });
-  }
-  panel.innerHTML = html;
-  document.body.appendChild(panel);
-};
-
-window.restaurarCita = async function(id){
-  await updateDoc(doc(db,'citas',id), { estado:'activa' });
-  showToast('Cita recuperada ✓');
-  const p = document.getElementById('panel-papelera'); if (p) p.remove();
+  if (!confirm('¿Eliminar esta cita?')) return;
+  await deleteDoc(doc(db,'citas',editId));
+  showToast('Cita eliminada'); cerrarModal();
 };
 
 window.moverOtroBarbero = async function(){
@@ -996,6 +963,60 @@ window.moverOtroBarbero = async function(){
     showToast(`Movido a ${candidato.nombre} — ya puedes agendar aquí`);
     cerrarModal();
   } catch(e) { showToast('Error al mover la cita'); }
+};
+
+window.reagendar = function(){
+  if (!editId) return;
+  const c = citas.find(x => x.id === editId);
+  if (!c) return;
+  const b = BARBEROS.find(x => x.nombre === c.barbero);
+  if (!b) { showToast('Barbero no encontrado'); return; }
+  if (estaDescansandoReal(b)) { showToast(`${b.nombre} descansa hoy`); return; }
+  const dur = c.slots || 1;
+
+  // Huecos libres hoy para este barbero (misma duración), ignorando el propio hueco
+  const libres = [];
+  ALL_SLOTS.forEach(slot => {
+    const ini = slotToMin(slot);
+    let ok = true;
+    for (let i=0; i<dur; i++){
+      const s = minToSlot(ini + i*30);
+      if (!estaEnHorario(b, s)) { ok = false; break; }
+      const ocup = getCitaEnSlot(b.nombre, s);
+      if (ocup && ocup.id !== c.id) { ok = false; break; }
+    }
+    if (ok) libres.push(slot);
+  });
+
+  let panel = document.getElementById('panel-reagendar');
+  if (panel) panel.remove();
+  panel = document.createElement('div');
+  panel.id = 'panel-reagendar';
+  panel.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);width:320px;max-width:92vw;max-height:70vh;overflow:auto;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:14px;z-index:400;box-shadow:0 10px 30px rgba(0,0,0,.6);';
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-weight:800;color:#f0f0f0;font-size:14px;">🕒 Re-agendar</span><span onclick="document.getElementById('panel-reagendar').remove()" style="font-size:11px;color:#888;cursor:pointer;">Cerrar</span></div>`;
+  html += `<div style="color:#999;font-size:12px;margin-bottom:10px;">${c.nombre||''} · ${c.barbero} · hoy — elige nuevo horario</div>`;
+  if (libres.length === 0){
+    html += '<div style="color:#666;font-size:13px;text-align:center;padding:16px 0;">No hay huecos libres hoy con este barbero.</div>';
+  } else {
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+    libres.forEach(slot => {
+      const actual = slot === c.slot;
+      html += `<button onclick="confirmarReagendar('${slot}')" ${actual?'disabled':''} style="padding:10px;border-radius:8px;border:1px solid ${actual?'#333':'#2a7d52'};background:${actual?'#222':'#0f2417'};color:${actual?'#666':'#7CFFB0'};font-weight:700;font-size:13px;cursor:${actual?'default':'pointer'};">${slot12hr(slot)}${actual?' (actual)':''}</button>`;
+    });
+    html += '</div>';
+  }
+  panel.innerHTML = html;
+  document.body.appendChild(panel);
+};
+
+window.confirmarReagendar = async function(slot){
+  if (!editId) return;
+  try {
+    await updateDoc(doc(db,'citas',editId), { slot });
+    showToast('Cita re-agendada ✓');
+  } catch(e){ showToast('Error al re-agendar'); }
+  const p = document.getElementById('panel-reagendar'); if (p) p.remove();
+  cerrarModal();
 };
 
 window.marcarNoShow = async function(){
