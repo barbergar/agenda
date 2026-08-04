@@ -275,6 +275,19 @@
   .wa-fab{ display:flex; align-items:center; gap:8px; padding:12px 18px; border-radius:30px; background:#12e06a !important; color:#04180d !important;
     font-weight:700; box-shadow:0 0 20px rgba(18,224,106,.6), 0 6px 18px rgba(18,224,106,.35) !important; animation:waGlow 2.6s ease-in-out infinite; }
   @keyframes waGlow{ 0%,100%{box-shadow:0 0 16px rgba(18,224,106,.45), 0 6px 18px rgba(18,224,106,.3);} 50%{box-shadow:0 0 26px rgba(18,224,106,.75), 0 6px 20px rgba(18,224,106,.4);} }
+  /* Punto 2 — botón "Continuar" fijo abajo (como el original) */
+  .app{ padding-bottom:96px; }
+  .section.active > .btn-primary{ position:fixed; left:50%; transform:translateX(-50%); bottom:0; width:100%; max-width:480px; margin:0;
+    border-radius:0; padding:16px 20px calc(16px + env(safe-area-inset-bottom)); z-index:30; box-shadow:0 -12px 30px rgba(10,10,11,.92); }
+  .wa-fab{ bottom:calc(90px + env(safe-area-inset-bottom)) !important; }
+  /* Punto 4 — ticket: etiquetas claras (izq), valores en oro (der) */
+  .ticket-lbl{ color:var(--txt) !important; }
+  .ticket-val{ color:var(--gold-soft) !important; font-weight:700; }
+  /* Punto 5 — encabezado del ticket como el original (marca) */
+  .ticket-head{ text-align:center; }
+  .t-brand{ font-family:'Playfair Display',serif; font-size:19px; font-weight:700; color:var(--txt); }
+  .t-brand em{ font-style:italic; color:var(--gold); }
+  .t-status{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:4px; }
   </style>
 </head>
 <body>
@@ -298,6 +311,11 @@
     <div class="section-title">¿Qué servicio deseas?</div>
     <div class="section-sub">Selecciona un servicio para comenzar</div>
     <div class="servicios-grid" id="servicios-grid"><div class="loading-inline">Cargando servicios...</div></div>
+    <div class="aviso-yami" id="aviso-ondulado" style="display:none">
+      <div class="aviso-yami-titulo">💬 Ondulado es agenda especial</div>
+      <div class="aviso-yami-sub">Este servicio lo realiza solo Yami, con agenda especial. Por favor envíanos WhatsApp para agendarlo.</div>
+      <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:0.75rem;background:#12e06a;color:#04180d;">💬 Escribir por WhatsApp</a>
+    </div>
     <button class="btn-primary" id="btn-1" onclick="irPaso(2)" disabled>Continuar</button>
   </div>
 
@@ -526,7 +544,10 @@ function renderServiciosGrid(){
       prefBarbero = 'cualquiera';
       selSlot = null;
       barberoExpandido = false;
-      document.getElementById('btn-1').disabled = false;
+      // Ondulado: agenda especial (solo Yami) → WhatsApp, no continúa por el flujo normal
+      const esOndulado = s.nombre === 'Ondulado';
+      document.getElementById('aviso-ondulado').style.display = esOndulado ? 'block' : 'none';
+      document.getElementById('btn-1').disabled = esOndulado;
     };
     grid.appendChild(card);
   });
@@ -824,8 +845,8 @@ function renderTicket({ esYami, folio, nombre, tel, d }){
     <div class="seal-sub">${foot}</div>
     <div class="ticket">
       <div class="ticket-head ${headClass}">
-        <div class="ticket-estado">${estadoChico}</div>
-        <div class="ticket-estado-big">${estadoGrande}</div>
+        <div class="t-brand">Barbería <em>Garage</em></div>
+        <div class="t-status">${esYami ? 'Solicitud en espera' : 'Cita confirmada'}</div>
       </div>
       <div class="ticket-body">
         <div class="ticket-row"><span class="ticket-lbl">Servicio</span><span class="ticket-val">${selServicio.nombre}</span></div>
@@ -838,7 +859,7 @@ function renderTicket({ esYami, folio, nombre, tel, d }){
       </div>
     </div>
     <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;background:#12e06a;color:#04180d;">💬 Contactar por WhatsApp</a>
-    <button class="btn-secondary" onclick="reiniciar()" style="margin-top:8px;">Agendar otra cita</button>
+    <button class="btn-secondary" onclick="reiniciar()" style="margin-top:8px;">Reservar otra cita</button>
   `;
 }
 
@@ -855,6 +876,7 @@ window.reiniciar = function(){
   const be = document.getElementById('btn-enviar');
   if (be) { be.disabled = false; be.textContent = 'Confirmar cita'; }
   const av = document.getElementById('aviso-yami'); if (av) av.style.display = 'none';
+  const avo = document.getElementById('aviso-ondulado'); if (avo) avo.style.display = 'none';
   document.getElementById('confirmacion').style.display = 'none';
   document.querySelector('.steps').style.display = 'flex';
   irPaso(1);
