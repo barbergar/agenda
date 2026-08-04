@@ -1,414 +1,338 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-  <meta http-equiv="Pragma" content="no-cache"/>
-  <meta http-equiv="Expires" content="0"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Barbería Garage — Reservar cita</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #f0f0f0; min-height: 100vh; }
-    .app { max-width: 480px; margin: 0 auto; padding-bottom: 3rem; }
-
-    /* HEADER */
-    .header { text-align: center; padding: 2.5rem 1rem 1.5rem; border-bottom: 1px solid #1e1e1e; }
-    .logo { font-family: 'Great Vibes', cursive; font-size: 52px; color: #f0f0f0; line-height: 1.1; }
-    .header-sub { font-size: 11px; color: #444; letter-spacing: 3px; text-transform: uppercase; margin-top: 6px; }
-
-    /* STEPS */
-    .steps { display: flex; justify-content: center; gap: 0; padding: 1rem 1rem 0; }
-    .step { flex: 1; text-align: center; position: relative; }
-    .step::after { content: ''; position: absolute; top: 12px; left: 50%; width: 100%; height: 1px; background: #2a2a2a; z-index: 0; }
-    .step:last-child::after { display: none; }
-    .step-num { width: 24px; height: 24px; border-radius: 50%; background: #1a1a1a; border: 1px solid #2a2a2a; color: #555; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px; position: relative; z-index: 1; transition: all .2s ease; }
-    .step.active .step-num { background: #f0f0f0; color: #111; border-color: #f0f0f0; }
-    .step.done .step-num { background: #22c55e; color: #fff; border-color: #22c55e; }
-    .step-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.04em; }
-    .step.active .step-label { color: #f0f0f0; }
-
-    /* SECTIONS */
-    .section { padding: 1.25rem 1rem 0; display: none; }
-    .section.active { display: block; animation: fadeIn .25s ease; }
-    @keyframes fadeIn { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
-    .section-title { font-size: 16px; font-weight: 700; color: #f0f0f0; margin-bottom: 0.25rem; }
-    .section-sub { font-size: 13px; color: #555; margin-bottom: 1rem; }
-
-    /* SERVICIOS */
-    .servicios-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .srv-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 0.75rem; cursor: pointer; transition: all 0.15s; position: relative; }
-    .srv-card:active { transform: scale(0.98); }
-    .srv-card.selected { border-color: #f0f0f0; background: #222; }
-    .srv-nombre { font-size: 13px; font-weight: 600; color: #f0f0f0; padding-right: 16px; }
-    .srv-duracion { font-size: 11px; color: #555; margin-top: 3px; }
-    .info-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #f59e0b; font-size: 16px; cursor: pointer; padding: 2px 4px; line-height: 1; transition: all .15s ease; }
-    .info-btn:hover { color: #ffb84d; transform: scale(1.12); }
-    .srv-desc { margin-top: 7px; font-size: 11px; color: #999; line-height: 1.5; border-top: 1px solid #2a2a2a; padding-top: 7px; display: none; }
-    .srv-desc.open { display: block; }
-    .sep-label { grid-column: 1/-1; font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 0 2px; border-top: 1px solid #1e1e1e; margin-top: 4px; }
-    .loading-inline { grid-column: 1/-1; text-align: center; color: #444; font-size: 13px; padding: 1.5rem 0; }
-
-    /* FECHAS */
-    .fechas-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
-    .fechas-row::-webkit-scrollbar { display: none; }
-    .fecha-card { flex-shrink: 0; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 0.6rem 0.75rem; cursor: pointer; text-align: center; min-width: 60px; transition: all .15s ease; }
-    .fecha-card.selected { border-color: #f0f0f0; background: #222; }
-    .fecha-dia-num { font-size: 18px; font-weight: 700; color: #f0f0f0; }
-    .fecha-dia-nom { font-size: 10px; color: #555; text-transform: uppercase; }
-    .fecha-mes { font-size: 10px; color: #444; margin-top: 2px; }
-
-    /* BARBERO (paso de horario) - disimulado por defecto */
-    .barbero-toggle { font-size: 13px; color: #777; margin-bottom: 1rem; cursor: pointer; }
-    .toggle-link { color: #f0f0f0; text-decoration: underline; margin-left: 4px; }
-    .barb-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
-    .barb-chip { padding: 6px 13px; border: 1px solid #2a2a2a; border-radius: 20px; background: #1a1a1a; color: #888; font-size: 12px; cursor: pointer; transition: all .15s ease; }
-    .barb-chip:active { transform: scale(0.96); }
-    .barb-chip.cualquiera.active { border-color: #f0f0f0; color: #f0f0f0; background: #222; font-weight: 600; }
-    .barb-chip.especial.active { border-color: #f59e0b; color: #f59e0b; background: #2a1f00; font-weight: 600; }
-
-    /* HORARIOS */
-    .horarios-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .hora-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 0.6rem; text-align: center; cursor: pointer; font-size: 13px; color: #f0f0f0; font-weight: 500; transition: all 0.15s; }
-    .hora-card:active { transform: scale(0.97); }
-    .hora-card.selected { border-color: #f0f0f0; background: #222; }
-    .no-disponible { text-align: center; padding: 2rem; color: #444; font-size: 14px; }
-
-    /* DATOS */
-    .fg { margin-bottom: 12px; }
-    .fl { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 5px; display: block; }
-    .fi { width: 100%; padding: 0.7rem 0.75rem; font-size: 14px; border: 1px solid #2a2a2a; border-radius: 8px; background: #1a1a1a; color: #f0f0f0; transition: border-color .15s ease; }
-    .fi:focus { outline: none; border-color: #555; }
-
-    /* RESUMEN */
-    .resumen-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
-    .res-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #1e1e1e; font-size: 13px; }
-    .res-row:last-child { border-bottom: none; }
-    .res-lbl { color: #555; }
-    .res-val { color: #f0f0f0; font-weight: 600; }
-
-    /* BUTTONS */
-    .btn-primary { width: 100%; padding: 0.9rem; background: #f0f0f0; color: #111; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 1rem; transition: all .15s ease; }
-    .btn-primary:hover:not(:disabled) { filter: brightness(1.06); }
-    .btn-primary:disabled { opacity: 0.2; cursor: not-allowed; }
-    .btn-secondary { width: 100%; padding: 0.7rem; background: none; color: #f0f0f0; border: 1px solid #2a2a2a; border-radius: 12px; font-size: 14px; cursor: pointer; margin-top: 8px; transition: all .15s ease; }
-    .btn-secondary:hover { border-color: #555; }
-
-    /* CONFIRMACION */
-    .confirmacion { display: none; flex-direction: column; align-items: center; text-align: center; padding: 3rem 1.5rem; animation: fadeIn .3s ease; }
-    .conf-icon { font-size: 56px; margin-bottom: 1rem; }
-    .conf-titulo { font-size: 22px; font-weight: 700; margin-bottom: 0.5rem; }
-    .conf-sub { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 2rem; }
-    .conf-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 1rem; width: 100%; margin-bottom: 1.5rem; text-align: left; }
-
-    /* PENDIENTE */
-    .pendiente-card { background: #1a1500; border: 1px solid #f59e0b; border-radius: 12px; padding: 1rem; text-align: center; margin-bottom: 1rem; }
-    .pendiente-titulo { font-size: 15px; font-weight: 700; color: #f59e0b; margin-bottom: 0.25rem; }
-    .pendiente-sub { font-size: 13px; color: #888; }
-
-    /* AVISO YAMI (paso 3) */
-    .aviso-yami { background: #1a1500; border: 1px solid #f59e0b; border-radius: 10px; padding: 0.75rem 1rem; margin-top: 1rem; animation: fadeIn .3s ease; }
-    .aviso-yami-titulo { font-size: 14px; font-weight: 700; color: #f59e0b; margin-bottom: 0.2rem; }
-    .aviso-yami-sub { font-size: 12px; color: #999; line-height: 1.5; }
-
-    /* TICKET (estilo caja) */
-    .ticket { width: 100%; max-width: 340px; margin: 0 auto 1.5rem; border-radius: 14px; overflow: hidden; text-align: left; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
-    .ticket-head { padding: 1rem 1.25rem; text-align: center; }
-    .ticket-head.ok { background: linear-gradient(135deg,#0f5132,#146c43); }
-    .ticket-head.wait { background: linear-gradient(135deg,#7a5b00,#a97f00); }
-    .ticket-estado { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,.85); font-weight: 700; }
-    .ticket-estado-big { font-size: 19px; font-weight: 800; color: #fff; margin-top: 2px; }
-    .ticket-body { background: #141414; border: 1px solid #2a2a2a; border-top: none; padding: 1rem 1.25rem; }
-    .ticket-folio { text-align: center; font-size: 11px; color: #666; letter-spacing: 1px; margin-bottom: .75rem; border-bottom: 1px dashed #333; padding-bottom: .6rem; }
-    .ticket-row { display: flex; justify-content: space-between; gap: 12px; padding: .35rem 0; font-size: 13px; }
-    .ticket-lbl { color: #777; }
-    .ticket-val { color: #f0f0f0; font-weight: 600; text-align: right; }
-    .ticket-foot { border-top: 1px dashed #333; margin-top: .6rem; padding-top: .7rem; text-align: center; font-size: 12px; color: #888; line-height: 1.5; }
-
-    .loading { text-align: center; padding: 2rem; color: #444; font-size: 14px; }
-    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #f0f0f0; color: #111; padding: 0.9rem 1.4rem; border-radius: 16px; font-size: 16px; line-height: 1.35; max-width: 88%; text-align: center; z-index: 100; display: none; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
-  </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-  /* ===== ONYX MOTION — capa visual (no cambia lógica) ===== */
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Barbería Garage — Reservar cita</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
   :root{
     --bg:#0a0a0b; --panel:#141416; --panel-2:#1b1b1e;
     --line:#242428; --line-soft:#1c1c20;
     --txt:#f4f2ee; --txt-2:#8f8b84; --txt-3:#5a5751;
     --gold:#c9a24b; --gold-soft:#d9b768; --gold-dim:#6d5a2c;
-    --spring:cubic-bezier(.34,1.25,.5,1); --ease:cubic-bezier(.4,0,.2,1);
+    --ok:#5fae7f;
+    --r:16px;
+    /* movimiento resortado (herencia del artesanal) */
+    --spring:cubic-bezier(.34,1.25,.5,1);
+    --ease:cubic-bezier(.4,0,.2,1);
   }
-  body{ font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-    background:radial-gradient(1200px 600px at 50% -10%, #17130a 0%, transparent 55%), var(--bg); color:var(--txt); }
-  .app{ padding-left:20px; padding-right:20px; }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    background:radial-gradient(1200px 600px at 50% -10%, #17130a 0%, transparent 55%), var(--bg);
+    color:var(--txt); min-height:100dvh; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:480px; margin:0 auto; min-height:100dvh; padding:0 20px 120px; position:relative}
 
   /* HEADER */
-  .header{ border-bottom:none; padding:40px 0 8px; }
-  .header::before{ content:'BARBERÍA · EST. 2017'; display:block; font-size:10px; letter-spacing:5px; color:var(--gold); text-transform:uppercase; opacity:.9; margin-bottom:6px; }
-  .logo{ font-family:'Playfair Display',serif; font-weight:700; font-size:40px; letter-spacing:.5px;
-    background:linear-gradient(180deg,#fbf7ee,#cfc7b6); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .header-sub{ color:var(--txt-3); letter-spacing:3px; margin-top:8px; }
+  .header{padding:40px 0 16px; text-align:center; position:relative}
+  .brand-mark{font-size:10px; letter-spacing:5px; color:var(--gold); text-transform:uppercase; opacity:.9}
+  .logo{font-family:'Playfair Display',serif; font-weight:700; font-size:40px; letter-spacing:.5px; margin-top:6px;
+    background:linear-gradient(180deg,#fbf7ee,#cfc7b6); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .logo em{font-style:italic; color:var(--gold); -webkit-text-fill-color:var(--gold)}
+  .brand-sub{font-size:11px; letter-spacing:3px; color:var(--txt-3); text-transform:uppercase; margin-top:8px}
+  .hairline{height:1px; background:linear-gradient(90deg,transparent,var(--gold-dim),transparent); margin:18px auto 0; width:70%}
 
-  /* STEPS → sellos con rebote */
-  .steps{ padding:22px 4px 6px; gap:6px; }
-  .step::after{ display:none; }
-  .step-num{ width:32px; height:32px; border-radius:50%; background:var(--panel); border:1px solid var(--line); color:var(--txt-3);
-    font-weight:700; transition:transform .4s var(--spring), background .3s, border-color .3s, color .3s; }
-  .step.active .step-num{ color:#161206; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); border-color:var(--gold); transform:scale(1.14); box-shadow:0 6px 16px rgba(201,162,75,.28); }
-  .step.done .step-num{ color:var(--gold-soft); background:#221c10; border-color:var(--gold-dim); }
-  .step-label{ color:var(--txt-3); letter-spacing:.05em; }
-  .step.active .step-label{ color:var(--txt); }
+  /* PROGRESS — sellos con rebote (movimiento artesanal, estilo onyx) */
+  .stamps{display:flex; justify-content:space-between; gap:6px; padding:22px 4px 6px}
+  .stamp{flex:1; text-align:center}
+  .stamp-dot{width:32px; height:32px; margin:0 auto 7px; border-radius:50%; display:grid; place-items:center;
+    font-size:12px; font-weight:700; color:var(--txt-3); background:var(--panel); border:1px solid var(--line);
+    transition:transform .4s var(--spring), background .3s ease, border-color .3s ease, color .3s ease; position:relative}
+  .stamp.active .stamp-dot{color:#161206; background:linear-gradient(180deg,var(--gold-soft),var(--gold));
+    border-color:var(--gold); transform:scale(1.14); box-shadow:0 6px 16px rgba(201,162,75,.28)}
+  .stamp.done .stamp-dot{color:var(--gold-soft); background:#221c10; border-color:var(--gold-dim)}
+  .stamp.done .stamp-dot::after{content:'✓'; font-size:13px}
+  .stamp.done .stamp-num{display:none}
+  .stamp-t{font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--txt-3); transition:color .3s ease}
+  .stamp.active .stamp-t{color:var(--txt)}
 
-  /* SECTIONS */
-  .section.active{ animation:onyxpop .5s var(--spring) both; }
-  @keyframes onyxpop{ from{opacity:0; transform:translateY(18px) scale(.97);} to{opacity:1; transform:translateY(0) scale(1);} }
-  .section-title{ font-family:'Playfair Display',serif; font-size:27px; font-weight:700; line-height:1.15; }
-  .section-sub{ font-size:13.5px; color:var(--txt-2); }
+  /* SECTIONS — entrada con rebote suave */
+  .section{display:none}
+  .section.active{display:block; animation:pop .5s var(--spring) both}
+  @keyframes pop{from{opacity:0; transform:translateY(18px) scale(.97)} to{opacity:1; transform:translateY(0) scale(1)}}
+  .s-head{display:flex; align-items:baseline; gap:10px; margin-bottom:2px}
+  .s-kicker{font-size:11px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--gold)}
+  .s-title{font-family:'Playfair Display',serif; font-size:27px; font-weight:700; line-height:1.15; letter-spacing:.2px}
+  .s-sub{font-size:13.5px; color:var(--txt-2); margin:6px 0 20px}
 
-  /* SERVICIOS → lista de una columna, tarjeta premium con ícono */
-  .servicios-grid{ display:flex; flex-direction:column; gap:11px; }
-  .srv-card{ background:linear-gradient(180deg,var(--panel),#101012); border:1px solid var(--line); border-radius:16px; padding:15px 16px;
-    transition:transform .32s var(--spring), border-color .25s, background .25s; }
-  .srv-card:active{ transform:scale(.985); }
-  .srv-card.selected{ border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); transform:scale(1.015); box-shadow:0 8px 22px rgba(201,162,75,.12); }
-  .srv-top{ display:flex; align-items:center; gap:13px; }
-  .srv-ic{ width:44px; height:44px; flex-shrink:0; border-radius:12px; display:grid; place-items:center; color:var(--txt-2);
-    background:var(--panel-2); border:1px solid var(--line); transition:transform .32s var(--spring), background .25s, border-color .25s, color .25s; }
-  .srv-ic svg{ width:23px; height:23px; }
-  .srv-card.selected .srv-ic{ border-color:var(--gold-dim); background:#221c10; color:var(--gold-soft); transform:scale(1.08) rotate(-4deg); }
-  .srv-mid{ flex:1; min-width:0; }
-  .srv-nombre{ font-size:15px; font-weight:600; letter-spacing:.2px; padding-right:0; }
-  .srv-duracion{ font-size:12px; color:var(--txt-2); margin-top:3px; }
-  .srv-tick{ width:23px; height:23px; border-radius:50%; border:1px solid var(--line); flex-shrink:0; position:relative;
-    transition:transform .32s var(--spring), background .25s, border-color .25s; }
-  .srv-card.selected .srv-tick{ border-color:var(--gold); background:var(--gold); transform:scale(1.05); }
-  .srv-tick::after{ content:''; position:absolute; left:7.5px; top:4px; width:5px; height:9px; border:solid #0a0a0b; border-width:0 2px 2px 0; transform:rotate(45deg) scale(0); transition:transform .35s var(--spring); }
-  .srv-card.selected .srv-tick::after{ transform:rotate(45deg) scale(1); }
-  .info-btn{ position:static; width:23px; height:23px; flex-shrink:0; border-radius:50%; border:1px solid var(--gold-dim); background:transparent; color:var(--gold-soft);
-    font-family:Georgia,serif; font-style:italic; font-size:13px; font-weight:700; display:grid; place-items:center; padding:0; }
-  .info-btn:hover{ transform:none; color:var(--gold); }
-  .srv-desc{ border-top:1px dashed var(--line); color:var(--txt-2); font-size:12.5px; line-height:1.6; margin-top:0; padding-top:0; }
-  .srv-desc.open{ margin-top:13px; padding-top:13px; }
-  .srv-precio{ display:flex; flex-wrap:wrap; gap:5px 16px; margin-top:8px; }
-  .srv-precio .reg b{ color:var(--txt); font-weight:600; }
-  .srv-precio .vipp{ color:var(--gold-soft); } .srv-precio .vipp b{ color:var(--gold-soft); font-weight:700; }
-  .vip-tag{ display:inline-block; font-size:9px; font-weight:800; letter-spacing:.06em; padding:1px 6px; border-radius:6px; margin:0 1px;
-    background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; vertical-align:middle; }
-  .sep-label{ font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--txt-3); border-top:none; display:flex; align-items:center; gap:10px; }
-  .sep-label::after{ content:''; flex:1; height:1px; background:var(--line-soft); }
+  /* SERVICE CARDS */
+  .srv-list{display:flex; flex-direction:column; gap:11px}
+  .srv{position:relative; padding:15px 16px; border:1px solid var(--line); border-radius:var(--r);
+    background:linear-gradient(180deg,var(--panel),#101012); cursor:pointer;
+    transition:transform .32s var(--spring), border-color .25s ease, background .25s ease}
+  .srv:active{transform:scale(.985)}
+  .srv-top{display:flex; align-items:center; gap:13px}
+  .srv.sel{border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); transform:scale(1.015); box-shadow:0 8px 22px rgba(201,162,75,.12)}
+  .srv-ic{width:44px; height:44px; flex-shrink:0; border-radius:12px; display:grid; place-items:center; color:var(--txt-2);
+    background:var(--panel-2); border:1px solid var(--line); transition:transform .32s var(--spring), background .25s, border-color .25s, color .25s}
+  .srv-ic svg{width:23px; height:23px}
+  .srv.sel .srv-ic{border-color:var(--gold-dim); background:#221c10; color:var(--gold-soft); transform:scale(1.08) rotate(-4deg)}
+  .srv-mid{flex:1; min-width:0}
+  .srv-name{font-size:15px; font-weight:600; letter-spacing:.2px}
+  .srv-meta{font-size:12px; color:var(--txt-2); margin-top:3px}
+  .srv-meta b{color:var(--gold-soft); font-weight:600}
+  .srv-tick{width:23px; height:23px; border-radius:50%; border:1px solid var(--line); flex-shrink:0; position:relative;
+    transition:transform .32s var(--spring), background .25s, border-color .25s}
+  .srv.sel .srv-tick{border-color:var(--gold); background:var(--gold); transform:scale(1.05)}
+  .srv-tick::after{content:''; position:absolute; left:7.5px; top:4px; width:5px; height:9px; border:solid #0a0a0b; border-width:0 2px 2px 0;
+    transform:rotate(45deg) scale(0); transition:transform .35s var(--spring)}
+  .srv.sel .srv-tick::after{transform:rotate(45deg) scale(1)}
+  /* botón info + descripción desplegable */
+  .srv-info{width:23px; height:23px; flex-shrink:0; border-radius:50%; border:1px solid var(--gold-dim); background:transparent; color:var(--gold-soft);
+    font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:13px; font-weight:700; cursor:pointer; display:grid; place-items:center; padding:0;
+    transition:transform .2s var(--spring), background .2s ease, color .2s ease}
+  .srv-info:active{transform:scale(.85)}
+  .srv-info.on{background:#221c10; color:var(--gold); border-color:var(--gold)}
+  .srv-desc{max-height:0; overflow:hidden; opacity:0; font-size:12.5px; color:var(--txt-2); line-height:1.6;
+    transition:max-height .38s var(--ease), opacity .3s ease, margin-top .3s ease, padding-top .3s ease}
+  .srv-desc.open{max-height:240px; opacity:1; margin-top:13px; padding-top:13px; border-top:1px dashed var(--line)}
+  .srv-price{display:flex; flex-wrap:wrap; gap:5px 16px; margin-top:8px}
+  .srv-price .reg b{color:var(--txt); font-weight:600}
+  .srv-price .vipp{color:var(--gold-soft)} .srv-price .vipp b{color:var(--gold-soft); font-weight:700}
+  .vip-tag{display:inline-block; font-size:9px; font-weight:800; letter-spacing:.06em; padding:1px 6px; border-radius:6px; margin:0 1px;
+    background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; vertical-align:middle}
+  .cat-label{font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--txt-3); margin:14px 2px 2px; display:flex; align-items:center; gap:10px}
+  .cat-label::after{content:''; flex:1; height:1px; background:var(--line-soft)}
 
-  /* FECHAS */
-  .fecha-card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; min-width:66px; padding:13px 0;
-    transition:transform .32s var(--spring), border-color .25s, background .25s; }
-  .fecha-card:active{ transform:scale(.95); }
-  .fecha-card.selected{ border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); transform:scale(1.05); box-shadow:0 8px 20px rgba(201,162,75,.14); }
-  .fecha-dia-num{ font-family:'Playfair Display',serif; font-size:22px; color:var(--txt); }
-  .fecha-card.selected .fecha-dia-num{ color:var(--gold-soft); }
-  .fecha-dia-nom{ color:var(--txt-3); letter-spacing:.1em; }
-  .fecha-card.selected .fecha-dia-nom{ color:var(--gold-soft); }
-  .fecha-mes{ color:var(--txt-3); }
+  /* DATES */
+  .dates{display:flex; gap:10px; overflow-x:auto; padding:2px 2px 10px; scrollbar-width:none; scroll-snap-type:x proximity}
+  .dates::-webkit-scrollbar{display:none}
+  .date{scroll-snap-align:start; flex-shrink:0; width:66px; padding:13px 0; border:1px solid var(--line); border-radius:14px;
+    background:var(--panel); text-align:center; cursor:pointer; transition:transform .32s var(--spring), border-color .25s, background .25s}
+  .date:active{transform:scale(.95)}
+  .date.sel{border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); transform:scale(1.05); box-shadow:0 8px 20px rgba(201,162,75,.14)}
+  .date.off{opacity:.32; pointer-events:none}
+  .d-dow{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--txt-3)}
+  .date.sel .d-dow{color:var(--gold-soft)}
+  .d-num{font-family:'Playfair Display',serif; font-size:22px; font-weight:700; margin:3px 0}
+  .date.sel .d-num{color:var(--gold-soft)}
+  .d-mon{font-size:10px; color:var(--txt-3); text-transform:uppercase; letter-spacing:.08em}
 
-  /* BARBEROS → avatares */
-  .barbero-toggle{ color:var(--txt-2); }
-  .toggle-link{ color:var(--gold-soft); text-decoration:none; border-bottom:1px solid var(--gold-dim); }
-  .barb-chips{ gap:11px; }
-  .barb-av{ text-align:center; cursor:pointer; width:64px; flex-shrink:0; }
-  .barb-av .av{ position:relative; width:56px; height:56px; margin:0 auto 6px; border-radius:50%; display:grid; place-items:center;
-    font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:var(--txt-2); background:var(--panel-2); border:1.5px solid var(--line);
-    transition:transform .4s var(--spring), border-color .25s, color .25s, box-shadow .25s; }
-  .barb-av:active .av{ transform:scale(.92); }
-  .barb-av.active .av{ border-color:var(--gold); color:var(--gold-soft); transform:translateY(-4px) scale(1.05); box-shadow:0 8px 18px rgba(201,162,75,.22), 0 0 0 4px rgba(201,162,75,.1); }
-  .barb-av .nm{ font-size:11.5px; color:var(--txt-2); }
-  .barb-av.active .nm{ color:var(--txt); font-weight:600; }
-  .b-vip{ position:absolute; top:-5px; right:-6px; font-size:8px; font-weight:800; letter-spacing:.05em; padding:2px 5px; border-radius:7px;
-    background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; box-shadow:0 2px 7px rgba(201,162,75,.45); }
+  /* BARBERO — toggle disimulado (comportamiento de producción) + avatares onyx al revelar */
+  .barb-toggle{font-size:13px; color:var(--txt-2); margin:2px 0 14px; cursor:pointer}
+  .barb-toggle .lnk{color:var(--gold-soft); text-decoration:underline; margin-left:4px; font-weight:600}
+  .lbl{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--txt-3); font-weight:600; margin:2px 0 13px}
+  .barbers{display:flex; gap:11px; overflow-x:auto; padding:4px 2px 14px; scrollbar-width:none; margin-bottom:4px}
+  .barbers::-webkit-scrollbar{display:none}
+  .barber{flex-shrink:0; text-align:center; cursor:pointer; width:64px}
+  .b-av{position:relative; width:56px; height:56px; margin:0 auto 6px; border-radius:50%; display:grid; place-items:center; font-family:'Playfair Display',serif;
+    font-size:20px; font-weight:700; color:var(--txt-2); background:var(--panel-2); border:1.5px solid var(--line);
+    transition:transform .4s var(--spring), border-color .25s, color .25s, box-shadow .25s}
+  .b-vip{position:absolute; top:-5px; right:-6px; font-size:8px; font-weight:800; letter-spacing:.05em; padding:2px 5px; border-radius:7px;
+    background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; box-shadow:0 2px 7px rgba(201,162,75,.45)}
+  .barber.sel .b-vip{box-shadow:0 2px 10px rgba(201,162,75,.6)}
+  .barber:active .b-av{transform:scale(.92)}
+  .barber.sel .b-av{border-color:var(--gold); color:var(--gold-soft); transform:translateY(-4px) scale(1.05); box-shadow:0 8px 18px rgba(201,162,75,.22), 0 0 0 4px rgba(201,162,75,.1)}
+  .b-name{font-size:11.5px; color:var(--txt-2)}
+  .barber.sel .b-name{color:var(--txt); font-weight:600}
 
-  /* HORARIOS */
-  .hora-card{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px 4px; color:var(--txt); font-weight:500;
-    font-variant-numeric:tabular-nums; transition:transform .3s var(--spring), border-color .25s, background .25s, color .25s; }
-  .hora-card:active{ transform:scale(.93); }
-  .hora-card.selected{ border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); color:var(--gold-soft); font-weight:600; transform:scale(1.04); box-shadow:0 6px 16px rgba(201,162,75,.14); }
+  /* TIMES */
+  .times{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+  .time{padding:13px 4px; border:1px solid var(--line); border-radius:12px; background:var(--panel); text-align:center;
+    font-size:14px; font-weight:500; font-variant-numeric:tabular-nums; cursor:pointer;
+    transition:transform .3s var(--spring), border-color .25s, background .25s, color .25s}
+  .time:active{transform:scale(.93)}
+  .time.sel{border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); color:var(--gold-soft); font-weight:600; transform:scale(1.04); box-shadow:0 6px 16px rgba(201,162,75,.14)}
+  .msg{text-align:center; color:var(--txt-3); font-size:13.5px; padding:22px 8px; line-height:1.7}
+
+  /* AVISO agenda especial (Yami / Ondulado) */
+  .aviso{background:linear-gradient(180deg,#1c1810,#141210); border:1px solid var(--gold-dim); border-radius:var(--r);
+    padding:16px; margin-top:16px; animation:pop .4s var(--spring) both}
+  .aviso-t{font-family:'Playfair Display',serif; font-size:16px; font-weight:700; color:var(--gold-soft); margin-bottom:6px}
+  .aviso-s{font-size:12.5px; color:var(--txt-2); line-height:1.6}
+  .wa-inline{display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; padding:13px; border-radius:12px;
+    background:#12e06a; color:#04180d; font-weight:700; font-size:14px; letter-spacing:.2px; text-decoration:none;
+    box-shadow:0 0 16px rgba(18,224,106,.4); transition:transform .28s var(--spring)}
+  .wa-inline:active{transform:scale(.97)}
+  .wa-inline svg{width:18px; height:18px; fill:#04180d}
 
   /* FORM */
-  .fl{ color:var(--txt-3); letter-spacing:.1em; }
-  .fi{ padding:14px 15px; font-size:15px; background:var(--panel); border:1px solid var(--line); border-radius:12px; color:var(--txt); }
-  .fi:focus{ border-color:var(--gold-dim); box-shadow:0 0 0 3px rgba(201,162,75,.1); }
+  .fg{margin-bottom:16px}
+  .fl{font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--txt-3); margin-bottom:7px; display:block}
+  .fl .req{color:var(--gold)}
+  .fi{width:100%; padding:14px 15px; font-size:15px; font-family:inherit; color:var(--txt); background:var(--panel);
+    border:1px solid var(--line); border-radius:12px; transition:border-color .2s ease, box-shadow .2s ease}
+  .fi::placeholder{color:var(--txt-3)}
+  .fi:focus{outline:none; border-color:var(--gold-dim); box-shadow:0 0 0 3px rgba(201,162,75,.1)}
+  .hint{font-size:11.5px; color:var(--gold-soft); margin-top:7px; opacity:.85}
 
-  /* RESUMEN */
-  .resumen-card{ background:linear-gradient(180deg,var(--panel),#101012); border:1px solid var(--line); border-radius:16px; padding:6px 18px; }
-  .res-row{ padding:13px 0; border-bottom:1px solid var(--line-soft); font-size:13.5px; }
-  .res-lbl{ color:var(--txt-2); } .res-val{ color:var(--txt); }
+  /* SUMMARY */
+  .sum{border:1px solid var(--line); border-radius:var(--r); background:linear-gradient(180deg,var(--panel),#101012); padding:6px 18px}
+  .sum-row{display:flex; justify-content:space-between; gap:16px; padding:13px 0; border-bottom:1px solid var(--line-soft); font-size:13.5px}
+  .sum-row:last-child{border-bottom:none}
+  .sum-l{color:var(--txt-2)}
+  .sum-v{color:var(--txt); font-weight:600; text-align:right}
+  .sum-v.accent{color:var(--gold-soft)}
 
-  /* BOTONES */
-  .btn-primary{ background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; border-radius:14px; font-weight:700; letter-spacing:.3px;
-    box-shadow:0 8px 24px rgba(201,162,75,.24); transition:transform .28s var(--spring), filter .2s, opacity .2s; }
-  .btn-primary:active:not(:disabled){ transform:scale(.97); }
-  .btn-primary:disabled{ opacity:.28; box-shadow:none; }
-  .btn-secondary{ border:1px solid var(--line); color:var(--txt-2); border-radius:14px; }
+  /* PENDIENTE (Yami, paso 5) */
+  .pend{background:linear-gradient(180deg,#1c1810,#141210); border:1px solid var(--gold-dim); border-radius:var(--r); padding:14px 16px; margin-bottom:14px}
+  .pend-t{font-size:14px; font-weight:700; color:var(--gold-soft); margin-bottom:3px}
+  .pend-s{font-size:12.5px; color:var(--txt-2); line-height:1.55}
 
-  /* AVISO YAMI / PENDIENTE (ámbar oro) */
-  .aviso-yami, .pendiente-card{ background:#1c1608; border-color:var(--gold-dim); border-radius:14px; }
-  .aviso-yami-titulo, .pendiente-titulo{ color:var(--gold-soft); }
+  /* AVISO DE PRIVACIDAD (paso 5, al final del contenido) */
+  .priv{margin-top:16px; border:1px solid var(--line); border-radius:var(--r); background:linear-gradient(180deg,var(--panel),#101012); padding:15px 16px}
+  .priv-head{display:flex; align-items:center; gap:10px; margin-bottom:9px}
+  .priv-ic{width:32px; height:32px; flex-shrink:0; border-radius:9px; display:grid; place-items:center; background:#221c10; border:1px solid var(--gold-dim); color:var(--gold-soft)}
+  .priv-ic svg{width:16px; height:16px}
+  .priv-t{font-size:13px; font-weight:700; color:var(--txt)}
+  .priv-d{font-size:12px; color:var(--txt-2); line-height:1.65}
+  .priv-legal{font-size:11.5px; color:var(--txt-3); margin-top:11px; line-height:1.5}
+  .priv-legal a{color:var(--gold-soft)}
+  .priv-check{display:flex; align-items:flex-start; gap:9px; margin-top:12px; cursor:pointer; font-size:12.5px; color:var(--txt-2); line-height:1.5}
+  .priv-check input{margin-top:2px; width:16px; height:16px; accent-color:var(--gold); flex-shrink:0}
 
-  /* TICKET Onyx + SELLO */
-  .conf-icon, .conf-titulo, .conf-sub{ display:none; }
-  .seal{ width:92px; height:92px; margin:0 auto 22px; border-radius:50%; display:grid; place-items:center; position:relative;
-    background:radial-gradient(circle at 50% 35%, #26200f, #141210); border:1.5px solid var(--gold-dim); animation:stampin .6s var(--spring) both; }
-  @keyframes stampin{ 0%{transform:scale(1.7) rotate(-14deg); opacity:0;} 55%{transform:scale(.9) rotate(4deg);} 100%{transform:scale(1) rotate(0); opacity:1;} }
-  .seal::after{ content:''; position:absolute; inset:6px; border-radius:50%; border:1px dashed rgba(201,162,75,.45); }
-  .seal svg{ width:42px; height:42px; z-index:1; }
-  .seal .chk{ stroke:var(--gold); stroke-width:3.2; fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:48; stroke-dashoffset:48; animation:draw .6s .4s var(--ease) forwards; }
-  @keyframes draw{ to{stroke-dashoffset:0;} }
-  .seal-title{ font-family:'Playfair Display',serif; font-size:27px; font-weight:700; margin-bottom:8px; }
-  .seal-sub{ font-size:13.5px; color:var(--txt-2); max-width:300px; margin:0 auto 24px; line-height:1.6; }
-  .ticket{ border:1px solid var(--line); box-shadow:0 20px 50px rgba(0,0,0,.5); }
-  .ticket-head.ok{ background:linear-gradient(135deg,#221c10,#161310); border-bottom:1px dashed var(--gold-dim); }
-  .ticket-head.wait{ background:linear-gradient(135deg,#2a1f04,#161310); border-bottom:1px dashed var(--gold-dim); }
-  .ticket-estado{ color:var(--gold-soft); }
-  .ticket-body{ background:var(--panel); border-color:var(--line); }
-  .ticket-val{ color:var(--txt); }
+  /* BUTTONS — premium onyx */
+  .actions{position:fixed; left:0; right:0; bottom:0; padding:16px 20px calc(16px + env(safe-area-inset-bottom));
+    max-width:480px; margin:0 auto; background:linear-gradient(180deg,transparent,var(--bg) 32%); pointer-events:none}
+  .actions>*{pointer-events:auto}
+  .row-btns{display:flex; gap:10px}
+  .btn{padding:16px; border:none; border-radius:14px; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; letter-spacing:.3px;
+    transition:transform .28s var(--spring), filter .2s ease, opacity .2s ease}
+  .btn:active:not(:disabled){transform:scale(.97)}
+  .btn-primary{flex:1; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; box-shadow:0 8px 24px rgba(201,162,75,.24)}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.05)}
+  .btn-primary:disabled{opacity:.28; box-shadow:none; cursor:not-allowed}
+  .btn-back{flex-shrink:0; padding:16px 20px; background:transparent; color:var(--txt-2); border:1px solid var(--line)}
 
-  /* WHATSAPP flotante → neón */
-  .wa-fab{ display:flex; align-items:center; gap:8px; padding:12px 18px; border-radius:30px; background:#12e06a !important; color:#04180d !important;
-    font-weight:700; box-shadow:0 0 20px rgba(18,224,106,.6), 0 6px 18px rgba(18,224,106,.35) !important; animation:waGlow 2.6s ease-in-out infinite; }
-  @keyframes waGlow{ 0%,100%{box-shadow:0 0 16px rgba(18,224,106,.45), 0 6px 18px rgba(18,224,106,.3);} 50%{box-shadow:0 0 26px rgba(18,224,106,.75), 0 6px 20px rgba(18,224,106,.4);} }
-  /* Punto 2 — barra de acción fija abajo (técnica Onyx de Code: pointer-events + degradado) */
-  .app{ padding-bottom:110px; }
-  .actions{ position:fixed; left:0; right:0; bottom:0; z-index:30; margin:0 auto; max-width:480px;
-    padding:16px 20px calc(16px + env(safe-area-inset-bottom));
-    background:linear-gradient(180deg,transparent,var(--bg) 32%); pointer-events:none; }
-  .actions > *{ pointer-events:auto; }
-  .row-btns{ display:flex; gap:10px; }
-  .actions .btn-primary{ flex:1; margin:0; }
-  .actions .btn-back{ flex-shrink:0; padding:16px 18px; margin:0; background:transparent; color:var(--txt-2);
-    border:1px solid var(--line); border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
-    transition:transform .28s var(--spring), border-color .2s; }
-  .actions .btn-back:active{ transform:scale(.94); }
-  .wa-fab{ bottom:calc(96px + env(safe-area-inset-bottom)) !important; }
-  /* Punto 4 — ticket: etiquetas claras (izq), valores en oro (der) */
-  .ticket-lbl{ color:var(--txt) !important; }
-  .ticket-val{ color:var(--gold-soft) !important; font-weight:700; }
-  /* Punto 5 — encabezado del ticket como el original (marca) */
-  .ticket-head{ text-align:center; }
-  .t-brand{ font-family:'Playfair Display',serif; font-size:19px; font-weight:700; color:var(--txt); }
-  .t-brand em{ font-style:italic; color:var(--gold); }
-  .t-status{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-soft); margin-top:4px; }
-  </style>
+  /* WHATSAPP — verde neón, redondeado, notorio */
+  .wa{position:fixed; right:16px; bottom:calc(96px + env(safe-area-inset-bottom)); display:flex; align-items:center; gap:8px;
+    padding:12px 18px; border-radius:30px; background:#12e06a; color:#04180d; font-weight:700; font-size:14px; letter-spacing:.2px;
+    text-decoration:none; z-index:40; box-shadow:0 0 20px rgba(18,224,106,.6), 0 6px 18px rgba(18,224,106,.35);
+    transition:transform .28s var(--spring), box-shadow .28s ease; animation:waGlow 2.6s ease-in-out infinite}
+  .wa svg{width:20px; height:20px; fill:#04180d}
+  .wa:active{transform:scale(.94)}
+  @keyframes waGlow{0%,100%{box-shadow:0 0 16px rgba(18,224,106,.45), 0 6px 18px rgba(18,224,106,.3)}
+    50%{box-shadow:0 0 26px rgba(18,224,106,.75), 0 6px 20px rgba(18,224,106,.4)}}
+
+  /* CONFIRM — sello estampado (movimiento artesanal, estética onyx) */
+  #confirm{display:none; padding-top:34px; text-align:center}
+  #confirm.show{display:block; animation:pop .55s var(--spring) both}
+  .seal{width:92px; height:92px; margin:0 auto 22px; border-radius:50%; display:grid; place-items:center; position:relative;
+    background:radial-gradient(circle at 50% 35%, #26200f, #141210); border:1.5px solid var(--gold-dim);
+    animation:stampin .6s var(--spring) both}
+  @keyframes stampin{0%{transform:scale(1.7) rotate(-14deg); opacity:0} 55%{transform:scale(.9) rotate(4deg)} 100%{transform:scale(1) rotate(0); opacity:1}}
+  .seal::after{content:''; position:absolute; inset:6px; border-radius:50%; border:1px dashed rgba(201,162,75,.45)}
+  .seal svg{width:42px; height:42px; z-index:1}
+  .seal .chk{stroke:var(--gold); stroke-width:3.2; fill:none; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray:48; stroke-dashoffset:48; animation:draw .6s .4s var(--ease) forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .ticket{border:1px solid var(--line); border-radius:var(--r); overflow:hidden; text-align:left; box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .t-head{padding:18px; text-align:center; background:linear-gradient(135deg,#221c10,#161310); border-bottom:1px dashed var(--gold-dim)}
+  .t-brand{font-family:'Playfair Display',serif; font-size:19px; font-weight:700}
+  .t-brand em{font-style:italic; color:var(--gold)}
+  .t-status{font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); margin-top:4px}
+  .t-body{padding:8px 20px 18px; background:var(--panel)}
+  .t-folio{text-align:center; font-size:11px; letter-spacing:.15em; color:var(--txt-3); padding:12px 0; border-bottom:1px dashed var(--line)}
+  .t-row{display:flex; justify-content:space-between; gap:12px; padding:9px 0; font-size:13px}
+  .t-l{color:var(--txt-2)} .t-v{color:var(--txt); font-weight:600; text-align:right}
+</style>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <div class="logo">Barbería Garage</div>
-    <div class="header-sub">Agenda tu cita</div>
+    <div class="brand-mark">Est. Garage</div>
+    <div class="logo">Barbería <em>Garage</em></div>
+    <div class="brand-sub">Reserva tu ritual</div>
+    <div class="hairline"></div>
   </div>
 
-  <!-- STEPS -->
-  <div class="steps">
-    <div class="step active" id="step-1"><div class="step-num">1</div><div class="step-label">Servicio</div></div>
-    <div class="step" id="step-2"><div class="step-num">2</div><div class="step-label">Fecha</div></div>
-    <div class="step" id="step-3"><div class="step-num">3</div><div class="step-label">Horario</div></div>
-    <div class="step" id="step-4"><div class="step-num">4</div><div class="step-label">Tus datos</div></div>
-    <div class="step" id="step-5"><div class="step-num">5</div><div class="step-label">Confirmar</div></div>
-  </div>
+  <div class="stamps" id="stamps"></div>
 
-  <!-- PASO 1: SERVICIO -->
-  <div class="section active" id="sec-1">
-    <div class="section-title">¿Qué servicio deseas?</div>
-    <div class="section-sub">Selecciona un servicio para comenzar</div>
-    <div class="servicios-grid" id="servicios-grid"><div class="loading-inline">Cargando servicios...</div></div>
-    <div class="aviso-yami" id="aviso-ondulado" style="display:none">
-      <div class="aviso-yami-titulo">💬 Ondulado es agenda especial</div>
-      <div class="aviso-yami-sub">Este servicio lo realiza solo Yami, con agenda especial. Por favor envíanos WhatsApp para agendarlo.</div>
-      <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:0.75rem;background:#12e06a;color:#04180d;">💬 Escribir por WhatsApp</a>
+  <!-- STEP 1 -->
+  <div class="section active" id="sec-1" style="margin-top:14px">
+    <div class="s-head"><span class="s-kicker">Paso 01</span></div>
+    <div class="s-title">¿Qué te haremos hoy?</div>
+    <div class="s-sub">Selecciona el servicio para comenzar.</div>
+    <div class="srv-list" id="srv-list"><div class="msg">Cargando servicios…</div></div>
+    <div class="aviso" id="aviso-ondulado" style="display:none">
+      <div class="aviso-t">Ondulado es agenda especial</div>
+      <div class="aviso-s">Este servicio lo realiza solo Yami, con agenda especial. Escríbenos por WhatsApp para agendarlo.</div>
+      <a class="wa-inline" id="wa-ondulado" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 14.4c-.3-.15-1.7-.83-2-.93-.26-.1-.45-.15-.64.15-.19.28-.73.93-.9 1.12-.16.19-.33.21-.62.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.64-2.05-.17-.29-.02-.45.13-.6.13-.13.3-.34.44-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.15-.64-1.54-.88-2.11-.23-.55-.47-.48-.64-.49h-.55c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.38s1.02 2.76 1.17 2.95c.15.19 2.01 3.07 4.87 4.3.68.29 1.21.47 1.62.6.68.22 1.3.19 1.79.11.55-.08 1.7-.69 1.94-1.36.24-.67.24-1.24.17-1.36-.07-.12-.26-.19-.55-.34z"/><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.18-3 .78.8-2.9-.2-.3A8 8 0 1 1 12 20z"/></svg>Escribir por WhatsApp</a>
     </div>
-    <div class="actions"><div class="row-btns">
-      <button class="btn-primary" id="btn-1" onclick="irPaso(2)" disabled>Continuar</button>
-    </div></div>
   </div>
 
-  <!-- PASO 2: FECHA -->
-  <div class="section" id="sec-2">
-    <div class="section-title">¿Cuándo quieres venir?</div>
-    <div class="section-sub">Selecciona un día disponible</div>
-    <div class="fechas-row" id="fechas-row"></div>
-    <div class="actions"><div class="row-btns">
-      <button class="btn-back" onclick="irPaso(1)" aria-label="Regresar">←</button>
-      <button class="btn-primary" id="btn-2" onclick="irPaso(3)" disabled>Continuar</button>
-    </div></div>
+  <!-- STEP 2 -->
+  <div class="section" id="sec-2" style="margin-top:14px">
+    <div class="s-head"><span class="s-kicker">Paso 02</span></div>
+    <div class="s-title">Elige el día</div>
+    <div class="s-sub">Desliza para ver más fechas.</div>
+    <div class="dates" id="dates"></div>
   </div>
 
-  <!-- PASO 3: HORARIO + BARBERO -->
-  <div class="section" id="sec-3">
-    <div class="section-title">Elige tu horario</div>
-    <div class="section-sub" id="horarios-sub">Horarios disponibles</div>
-    <div class="barbero-toggle" id="barbero-toggle" onclick="mostrarBarberos()">¿Tienes un barbero de preferencia? <span class="toggle-link">Elegir</span></div>
-    <div class="barb-chips" id="barbero-chips" style="display:none"></div>
-    <div class="aviso-yami" id="aviso-yami" style="display:none">
-      <div class="aviso-yami-titulo">💬 Yami requiere agenda especial</div>
-      <div class="aviso-yami-sub">Sus días de trabajo cambian cada semana. Por favor envíanos WhatsApp para agendar con ella.</div>
-      <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:0.75rem;background:#25d366;color:#fff;">💬 Escribir por WhatsApp</a>
+  <!-- STEP 3 -->
+  <div class="section" id="sec-3" style="margin-top:14px">
+    <div class="s-head"><span class="s-kicker">Paso 03</span></div>
+    <div class="s-title">Elige tu horario</div>
+    <div class="s-sub" id="sec3-sub">Horarios disponibles.</div>
+    <div class="barb-toggle" id="barb-toggle">¿Tienes un barbero de preferencia? <span class="lnk">Elegir</span></div>
+    <div class="barbers" id="barbers" style="display:none"></div>
+    <div class="aviso" id="aviso-yami" style="display:none">
+      <div class="aviso-t">Yami requiere agenda especial</div>
+      <div class="aviso-s">Sus días de trabajo cambian cada semana. Escríbenos por WhatsApp para agendar con ella.</div>
+      <a class="wa-inline" id="wa-yami" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 14.4c-.3-.15-1.7-.83-2-.93-.26-.1-.45-.15-.64.15-.19.28-.73.93-.9 1.12-.16.19-.33.21-.62.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.64-2.05-.17-.29-.02-.45.13-.6.13-.13.3-.34.44-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.15-.64-1.54-.88-2.11-.23-.55-.47-.48-.64-.49h-.55c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.38s1.02 2.76 1.17 2.95c.15.19 2.01 3.07 4.87 4.3.68.29 1.21.47 1.62.6.68.22 1.3.19 1.79.11.55-.08 1.7-.69 1.94-1.36.24-.67.24-1.24.17-1.36-.07-.12-.26-.19-.55-.34z"/><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.18-3 .78.8-2.9-.2-.3A8 8 0 1 1 12 20z"/></svg>Escribir por WhatsApp</a>
     </div>
-    <div id="horarios-contenido"><div class="loading">Cargando horarios...</div></div>
-    <div class="actions"><div class="row-btns">
-      <button class="btn-back" onclick="irPaso(2)" aria-label="Regresar">←</button>
-      <button class="btn-primary" id="btn-3" onclick="irPaso(4)" disabled>Continuar</button>
-    </div></div>
+    <div class="lbl" id="times-lbl" style="margin-top:16px">Horarios</div>
+    <div id="times"></div>
   </div>
 
-  <!-- PASO 4: DATOS -->
-  <div class="section" id="sec-4">
-    <div class="section-title">Tus datos</div>
-    <div class="section-sub">Para confirmar tu cita</div>
-    <div class="fg"><label class="fl">Nombre completo</label><input class="fi" type="text" id="d-nombre" placeholder="Tu nombre" /></div>
-    <div class="fg">
-      <label class="fl">WhatsApp <span style="color:#ef4444">*</span></label>
-      <input class="fi" type="tel" id="d-telefono" placeholder="10 dígitos (obligatorio)" inputmode="numeric" required/>
-      <div style="font-size:11px;color:#f59e0b;margin-top:4px;">⚠️ Si tu cita no es aceptada te contactaremos por este número</div>
+  <!-- STEP 4 -->
+  <div class="section" id="sec-4" style="margin-top:14px">
+    <div class="s-head"><span class="s-kicker">Paso 04</span></div>
+    <div class="s-title">Tus datos</div>
+    <div class="s-sub">Para reservar y confirmar tu cita.</div>
+    <div class="fg"><label class="fl">Nombre completo</label><input class="fi" id="f-nombre" placeholder="Tu nombre"></div>
+    <div class="fg"><label class="fl">WhatsApp <span class="req">*</span></label>
+      <input class="fi" id="f-tel" type="tel" inputmode="numeric" placeholder="10 dígitos">
+      <div class="hint">Si tu cita no es aceptada te contactaremos por este número.</div>
     </div>
-    <div class="fg"><label class="fl">Comentario (opcional)</label><input class="fi" type="text" id="d-comentario" placeholder="Ej: llego 10 min tarde, alguna preferencia..." /></div>
-    <div class="actions"><div class="row-btns">
-      <button class="btn-back" onclick="irPaso(3)" aria-label="Regresar">←</button>
-      <button class="btn-primary" onclick="irPaso(5)">Continuar</button>
-    </div></div>
+    <div class="fg"><label class="fl">Comentario (opcional)</label><input class="fi" id="f-com" placeholder="Alguna preferencia..."></div>
   </div>
 
-  <!-- PASO 5: RESUMEN -->
-  <div class="section" id="sec-5">
-    <div class="section-title">Confirma tu cita</div>
-    <div class="section-sub">Revisa los detalles antes de enviar</div>
-    <div class="pendiente-card" id="pendiente-card" style="display:none">
-      <div class="pendiente-titulo">⏳ Sujeto a confirmación</div>
-      <div class="pendiente-sub">Las citas con Yami quedan en espera hasta que recepción las confirme. Te avisaremos por WhatsApp.</div>
+  <!-- STEP 5 -->
+  <div class="section" id="sec-5" style="margin-top:14px">
+    <div class="s-head"><span class="s-kicker">Paso 05</span></div>
+    <div class="s-title">Confirma tu cita</div>
+    <div class="s-sub">Revisa los detalles antes de reservar.</div>
+    <div class="pend" id="pend" style="display:none">
+      <div class="pend-t">Sujeto a confirmación</div>
+      <div class="pend-s">Las citas con Yami quedan en espera hasta que recepción las confirme. Te avisamos por WhatsApp.</div>
     </div>
-    <div class="resumen-card" id="resumen-card"></div>
-    <div class="actions"><div class="row-btns">
-      <button class="btn-back" onclick="irPaso(4)" aria-label="Regresar">←</button>
-      <button class="btn-primary" id="btn-enviar" onclick="enviarSolicitud()">Confirmar cita</button>
-    </div></div>
+    <div class="sum" id="sum"></div>
+    <div class="priv" id="aviso-privacidad"></div>
   </div>
 
-  <!-- CONFIRMACION FINAL -->
-  <div class="confirmacion" id="confirmacion">
-    <div class="conf-icon">✅</div>
-    <div class="conf-titulo">¡Solicitud enviada!</div>
-    <div class="conf-sub">Tu solicitud fue recibida. Nuestro equipo la revisará y te confirmaremos a la brevedad.</div>
-    <div class="conf-card" id="conf-resumen"></div>
-    <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:1rem;background:#25d366;color:#fff;">💬 Contactar por WhatsApp</a>
-    <button class="btn-primary" onclick="reiniciar()" style="margin-top:8px;">Agendar otra cita</button>
+  <!-- CONFIRM -->
+  <div id="confirm">
+    <div class="seal"><svg viewBox="0 0 44 44"><path class="chk" d="M12 23 l7 7 l14 -16"/></svg></div>
+    <div class="ticket" id="ticket"></div>
+    <div style="margin-top:18px"><button class="btn btn-back" id="btn-reset" style="width:100%">Reservar otra cita</button></div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<a class="wa" id="wa-float" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 14.4c-.3-.15-1.7-.83-2-.93-.26-.1-.45-.15-.64.15-.19.28-.73.93-.9 1.12-.16.19-.33.21-.62.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.64-2.05-.17-.29-.02-.45.13-.6.13-.13.3-.34.44-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.15-.64-1.54-.88-2.11-.23-.55-.47-.48-.64-.49h-.55c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.38s1.02 2.76 1.17 2.95c.15.19 2.01 3.07 4.87 4.3.68.29 1.21.47 1.62.6.68.22 1.3.19 1.79.11.55-.08 1.7-.69 1.94-1.36.24-.67.24-1.24.17-1.36-.07-.12-.26-.19-.55-.34z"/><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.18-3 .78.8-2.9-.2-.3A8 8 0 1 1 12 20z"/></svg>WhatsApp</a>
 
-<a class="wa-fab" href="https://wa.me/522223961602" target="_blank" style="position:fixed;bottom:1.5rem;right:1rem;text-decoration:none;z-index:50;font-size:14px;">💬 WhatsApp</a>
+<div class="actions" id="actions">
+  <div class="row-btns">
+    <button class="btn btn-back" id="btn-back" style="display:none">←</button>
+    <button class="btn btn-primary" id="btn-next" disabled>Continuar</button>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
+/* ============================================================
+   CONFIGURACIÓN EDITABLE
+   ============================================================ */
 const firebaseConfig = {
   apiKey: "AIzaSyBD5ZyaEHhmTmjwTj3mra9be3bjmpxcPZM",
   authDomain: "agenda-garage-6035c.firebaseapp.com",
@@ -418,24 +342,85 @@ const firebaseConfig = {
   appId: "1:235643370520:web:130bc8908561286014176d"
 };
 
+const WA_NUM = '522223961602';
+const WA_URL = 'https://wa.me/' + WA_NUM;
+
+// Barberos y servicios de "agenda especial": bloquean el flujo y mandan a WhatsApp.
+const BARBEROS_AGENDA_ESPECIAL = ['Yami'];
+const SERVICIOS_AGENDA_ESPECIAL = ['Ondulado'];
+
+// El folio GAR-xxxxxx SIEMPRE se genera y se guarda; esto solo decide si se muestra en el ticket.
+const MOSTRAR_FOLIO = false;
+
+// Aviso de privacidad (paso 5). Editable sin tocar el HTML.
+const AVISO_PRIVACIDAD = {
+  enabled: true,
+  title: "Tu información está protegida",
+  description: "Utilizamos los datos que proporcionas únicamente para gestionar tu cita, comunicarnos contigo cuando sea necesario y brindarte un mejor servicio. No compartimos tu información con terceros sin tu consentimiento, salvo cuando la ley lo requiera.",
+  acceptance_mode: "implicit",   // "implicit" | "checkbox_required"
+  legal_text: "Al confirmar tu reservación aceptas nuestro Aviso de Privacidad.",
+  privacy_policy_url: "",        // vacío por ahora; si se llena, el texto se vuelve enlace
+  show_icon: true,
+  show_title: true
+};
+
+/* ============================================================
+   FIREBASE
+   ============================================================ */
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* ============================================================
+   CONSTANTES / HELPERS
+   ============================================================ */
 const DIAS_N = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const DIAS_CORTO = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const MESES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const STEP_T = ['Servicio','Fecha','Horario','Datos','Confirmar'];
 
-function duracionLabel(slots){
-  return slots===1?'30 min':slots===2?'1 hora':slots===3?'1.5 horas':'2 horas';
-}
+/* Íconos SVG de barbería (trazo, heredan color oro al seleccionar) */
+const ICONS = {
+  scissors:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>',
+  clipper:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v5M8 3v5M11 3v5"/><path d="M3 8h10.5l5.5 5.5a2.6 2.6 0 0 1-3.7 3.7L4 11z"/></svg>',
+  razor:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10 14a3 3 0 0 1-3 .5"/><path d="M10 14 7.5 16.5a3 3 0 1 1-3-3L7 11"/><path d="M14 6l4 4"/></svg>',
+  comb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18v2.2a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/><path d="M6 14.5V18M10 14.5V19M14 14.5V19M18 14.5V18"/></svg>',
+  crown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-1.5 10h-15z"/><line x1="6" y1="21" x2="18" y2="21"/></svg>',
+  sparkle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>',
+  droplet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.4 6 10.4a6 6 0 0 1-12 0C6 9.4 12 3 12 3z"/></svg>',
+  wave:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M3 15c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></svg>',
+  design:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18L9 6l3 7 2-4 6 9"/></svg>',
+};
 
+function duracionLabel(slots){ return slots===1?'30 min':slots===2?'1 hora':slots===3?'1.5 horas':'2 horas'; }
 function slotToMin(s){ const [h,m]=s.split(':').map(Number); return h*60+m; }
 function minToSlot(m){ return `${String(Math.floor(m/60)).padStart(2,'0')}:${m%60===0?'00':'30'}`; }
 function slot12hr(s){ const [h,m]=s.split(':').map(Number); const ap=h>=12?'PM':'AM'; const h12=h%12||12; return `${h12}:${m===0?'00':'30'} ${ap}`; }
 function getDateKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-let _toastTimer=null;
-function showToast(msg, ms=2500){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; if(_toastTimer) clearTimeout(_toastTimer); _toastTimer=setTimeout(()=>t.style.display='none',ms); }
+function val(id){ const e=document.getElementById(id); return e?e.value.trim():''; }
+
+// Precio TAL CUAL viene de Firestore: número -> "$150"; texto ("desde $90") -> se muestra tal cual, sin forzar "$".
+function fmtPrecio(v){
+  if (v===undefined || v===null) return '';
+  const s = String(v).trim();
+  if (s==='') return '';
+  return /^\d+(\.\d+)?$/.test(s) ? '$'+s : s;
+}
+
+function esServicioEspecial(s){ return !!(s && SERVICIOS_AGENDA_ESPECIAL.includes(s.nombre)); }
+function esBarberoEspecial(nombre){ return BARBEROS_AGENDA_ESPECIAL.includes(nombre); }
+
+function iconoServicio(s){
+  if (s.esPaquete) return ICONS.crown;
+  const n = (s.nombre||'').toLowerCase();
+  if (n.includes('ondul')) return ICONS.wave;
+  if (n.includes('greca') || n.includes('diseño') || n.includes('diseno')) return ICONS.design;
+  if (n.includes('barba')) return ICONS.clipper;
+  if (n.includes('contorno') || n.includes('ceja')) return ICONS.razor;
+  if (n.includes('oído') || n.includes('oido') || n.includes('pigment')) return ICONS.droplet;
+  if (n.includes('facial') || n.includes('carbón') || n.includes('carbon') || n.includes('limpieza') || n.includes('exfo')) return ICONS.sparkle;
+  return ICONS.scissors;
+}
 
 // ---- Horarios efectivos (respetan cierre anticipado / domingo especial / excepciones) ----
 function inicioEfectivo(b, dia){
@@ -460,6 +445,9 @@ function descansaHoy(b, dia, ov){
   return normal;
 }
 
+/* ============================================================
+   ESTADO
+   ============================================================ */
 let BARBEROS = [];
 let unsubBarberos = null;
 let SERVICIOS = [];
@@ -468,27 +456,44 @@ let unsubServicios = null;
 let selServicio=null, selFecha=null, selSlot=null, selBarbero=null;
 let prefBarbero = 'cualquiera';
 let barberoExpandido = false;
-let pasoActual = 1;
+let step = 1;
 
+const btnNext = document.getElementById('btn-next');
+const btnBack = document.getElementById('btn-back');
+const stampsEl = document.getElementById('stamps');
+
+function setNext(on){ btnNext.disabled = !on; }
+
+/* ============================================================
+   SELLOS DE PROGRESO
+   ============================================================ */
+STEP_T.forEach((t,i)=>{
+  const s=document.createElement('div'); s.className='stamp';
+  s.innerHTML=`<div class="stamp-dot"><span class="stamp-num">${i+1}</span></div><div class="stamp-t">${t}</div>`;
+  stampsEl.appendChild(s);
+});
+function paint(){ [...stampsEl.children].forEach((s,i)=>s.className='stamp'+(i<step-1?' done':i===step-1?' active':'')); }
+
+/* ============================================================
+   FIRESTORE — escucha en vivo (onSnapshot)
+   ============================================================ */
 function escucharBarberos(){
   if (unsubBarberos) unsubBarberos();
   unsubBarberos = onSnapshot(query(collection(db,'barberos'), orderBy('orden')), snap => {
     BARBEROS = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(b => b.activo !== false);
-    renderServiciosGrid();
     renderFechas();
-    if (pasoActual === 3) { renderBarberoChips(); cargarHorarios(); }
+    if (step === 3) { renderBarberos(); if (!esBarberoEspecial(prefBarbero)) cargarHorarios(); }
   });
 }
-
 function escucharServicios(){
   if (unsubServicios) unsubServicios();
   unsubServicios = onSnapshot(query(collection(db,'servicios'), orderBy('orden')), snap => {
     SERVICIOS = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(s => s.activo !== false);
-    renderServiciosGrid();
+    renderServicios();
   });
 }
 
-// Mismo orden que en la Agenda interna: primer servicio, paquetes, resto de servicios, Ondulado al final
+// Mismo orden que la Agenda interna: primer servicio, paquetes, resto de servicios, Ondulado al final
 function ordenarServicios(lista){
   const paquetes = lista.filter(s => s.esPaquete).sort((a,b) => (a.orden||0)-(b.orden||0));
   const individuales = lista.filter(s => !s.esPaquete && s.nombre!=='Ondulado').sort((a,b) => (a.orden||0)-(b.orden||0));
@@ -497,126 +502,115 @@ function ordenarServicios(lista){
   return [individuales[0], ...paquetes, ...individuales.slice(1), ...ondulado];
 }
 
-// Íconos SVG por tipo de servicio (heredan color oro al seleccionar). Sin campo en Firestore: se infiere por nombre.
-const ICONOS = {
-  scissors:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>',
-  clipper:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v5M8 3v5M11 3v5"/><path d="M3 8h10.5l5.5 5.5a2.6 2.6 0 0 1-3.7 3.7L4 11z"/></svg>',
-  razor:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10 14a3 3 0 0 1-3 .5"/><path d="M10 14 7.5 16.5a3 3 0 1 1-3-3L7 11"/><path d="M14 6l4 4"/></svg>',
-  crown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-1.5 10h-15z"/><line x1="6" y1="21" x2="18" y2="21"/></svg>',
-  sparkle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>',
-  droplet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.4 6 10.4a6 6 0 0 1-12 0C6 9.4 12 3 12 3z"/></svg>',
-  wave:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M3 15c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></svg>',
-  design:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18L9 6l3 7 2-4 6 9"/></svg>',
-};
-function iconoPara(nombre){
-  const n = (nombre||'').toLowerCase();
-  if (n.includes('greca') || n.includes('diseño') || n.includes('diseno')) return ICONOS.design;
-  if (n.includes('ceja') || n.includes('contorno') || n.includes('retoque')) return ICONOS.razor;
-  if (n.includes('barba')) return ICONOS.clipper;
-  if (n.includes('facial') || n.includes('carbón') || n.includes('carbon') || n.includes('exfoli') || n.includes('limpieza profunda')) return ICONOS.sparkle;
-  if (n.includes('oído') || n.includes('oido') || n.includes('pigment')) return ICONOS.droplet;
-  if (n.includes('ondulado') || n.includes('permanente')) return ICONOS.wave;
-  if (n.includes('paq') || n.includes('rey') || n.includes('patrón') || n.includes('patron') || n.includes('vip')) return ICONOS.crown;
-  return ICONOS.scissors;
-}
-
-// ---- PASO 1: Servicios ----
-function renderServiciosGrid(){
-  const grid = document.getElementById('servicios-grid');
-  if (!SERVICIOS.length) { grid.innerHTML = '<div class="loading-inline">Cargando servicios...</div>'; return; }
+/* ============================================================
+   PASO 1 — Servicios
+   ============================================================ */
+function renderServicios(){
+  const grid = document.getElementById('srv-list');
+  if (!SERVICIOS.length) { grid.innerHTML = '<div class="msg">Cargando servicios…</div>'; return; }
   const ordenados = ordenarServicios(SERVICIOS);
   grid.innerHTML = '';
-  let sepPuesto = false;
   const primerPaqueteIdx = ordenados.findIndex(s => s.esPaquete);
+
   ordenados.forEach((s, i) => {
-    if (i === primerPaqueteIdx && !sepPuesto && primerPaqueteIdx !== -1) {
-      const sep = document.createElement('div'); sep.className='sep-label'; sep.textContent='Paquetes'; grid.appendChild(sep);
-      sepPuesto = true;
+    if (i === primerPaqueteIdx && primerPaqueteIdx !== -1) {
+      const l = document.createElement('div'); l.className='cat-label'; l.textContent='Paquetes'; grid.appendChild(l);
     }
-    const descId = `desc-${s.id}`;
-    const descTxt = (s.descripcion && s.descripcion.trim()) ? `<div>${s.descripcion}</div>` : '';
-    let precioHtml = '';
-    if (s.precio || s.precioVip) {
-      precioHtml = `<div class="srv-precio">`;
-      if (s.precio) precioHtml += `<span class="reg">Precio <b>$${s.precio}</b></span>`;
-      if (s.precioVip) precioHtml += `<span class="vipp"><span class="vip-tag">VIP</span> <b>$${s.precioVip}</b></span>`;
-      precioHtml += `</div>`;
+
+    // Contenido del ⓘ: descripción (qué incluye) + Precio + VIP
+    let descInner = '';
+    if (s.descripcion && s.descripcion.trim()) descInner += `<div>${s.descripcion}</div>`;
+    const pReg = fmtPrecio(s.precio);
+    // Tolerante a la inconsistencia de datos en Firestore: la mayoría de docs usan
+    // `precioVip`, pero algún servicio (p. ej. "Limpieza oídos") lo guarda como `precioVIP`.
+    const vipRaw = (s.precioVip !== undefined && s.precioVip !== null) ? s.precioVip : s.precioVIP;
+    const pVip = fmtPrecio(vipRaw);
+    if (pReg || pVip) {
+      descInner += '<div class="srv-price">';
+      if (pReg) descInner += `<span class="reg">Precio <b>${pReg}</b></span>`;
+      if (pVip) descInner += `<span class="vipp"><span class="vip-tag">VIP</span> <b>${pVip}</b></span>`;
+      descInner += '</div>';
     }
-    const card = document.createElement('div'); card.className='srv-card';
-    card.innerHTML = `
-      <div class="srv-top">
-        <div class="srv-ic">${iconoPara(s.nombre)}</div>
-        <div class="srv-mid">
-          <div class="srv-nombre">${s.nombre}</div>
-          <div class="srv-duracion">${duracionLabel(s.slots)}</div>
-        </div>
-        <button type="button" class="info-btn" onclick="event.stopPropagation(); toggleInfo('${descId}')" title="Ver detalles y precio">i</button>
+    const tieneInfo = !!descInner;
+    const seleccionada = selServicio && s.id === selServicio.id;
+
+    const el = document.createElement('div'); el.className = 'srv' + (seleccionada ? ' sel' : '');
+    el.innerHTML = `<div class="srv-top">
+        <div class="srv-ic">${iconoServicio(s)}</div>
+        <div class="srv-mid"><div class="srv-name">${s.nombre}</div><div class="srv-meta">${duracionLabel(s.slots)}</div></div>
+        ${tieneInfo ? '<button class="srv-info" type="button" aria-label="Ver detalles y precio">i</button>' : ''}
         <div class="srv-tick"></div>
       </div>
-      <div class="srv-desc" id="${descId}">${descTxt}${precioHtml}</div>
-    `;
-    card.onclick = () => {
-      document.querySelectorAll('.srv-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      selServicio = s;
-      prefBarbero = 'cualquiera';
-      selSlot = null;
-      barberoExpandido = false;
-      // Ondulado: agenda especial (solo Yami) → WhatsApp, no continúa por el flujo normal
-      const esOndulado = s.nombre === 'Ondulado';
-      document.getElementById('aviso-ondulado').style.display = esOndulado ? 'block' : 'none';
-      document.getElementById('btn-1').disabled = esOndulado;
-    };
-    grid.appendChild(card);
+      ${tieneInfo ? `<div class="srv-desc">${descInner}</div>` : ''}`;
+
+    if (tieneInfo) {
+      const info = el.querySelector('.srv-info'), desc = el.querySelector('.srv-desc');
+      info.onclick = (e) => { e.stopPropagation();
+        const abrir = !desc.classList.contains('open');
+        document.querySelectorAll('.srv-desc.open').forEach(d => { d.classList.remove('open'); const b=d.parentElement.querySelector('.srv-info'); if(b)b.classList.remove('on'); });
+        if (abrir) { desc.classList.add('open'); info.classList.add('on'); }
+      };
+    }
+    el.onclick = () => seleccionarServicio(s, el);
+    grid.appendChild(el);
   });
 }
 
-// ---- PASO 2: Fechas ----
+function seleccionarServicio(s, el){
+  document.querySelectorAll('.srv').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  selServicio = s;
+  prefBarbero = 'cualquiera';
+  selSlot = null;
+  selBarbero = null;
+  barberoExpandido = false;
+  const av = document.getElementById('aviso-ondulado');
+  if (esServicioEspecial(s)) {
+    av.style.display = 'block';   // Ondulado: agenda especial -> a WhatsApp, no avanza
+    setNext(false);
+  } else {
+    av.style.display = 'none';
+    setNext(true);
+  }
+}
+
+/* ============================================================
+   PASO 2 — Fechas (respeta descansos por barbero)
+   ============================================================ */
 function renderFechas(){
-  const fechasRow = document.getElementById('fechas-row');
-  fechasRow.innerHTML = '';
+  const row = document.getElementById('dates');
+  row.innerHTML = '';
   for (let i=0; i<14; i++){
     const d = new Date(); d.setDate(d.getDate()+i); d.setHours(0,0,0,0);
     const diaSem = d.getDay();
     const hayBarbero = BARBEROS.some(b => !(!b.especial && (b.descanso||[]).includes(diaSem)));
-    const card = document.createElement('div'); card.className = 'fecha-card' + (hayBarbero ? '' : ' ocupado');
-    card.innerHTML = `<div class="fecha-dia-num">${d.getDate()}</div><div class="fecha-dia-nom">${DIAS_CORTO[diaSem]}</div><div class="fecha-mes">${MESES_CORTO[d.getMonth()]}</div>`;
+    const el = document.createElement('div'); el.className = 'date' + (hayBarbero ? '' : ' off');
+    el.innerHTML = `<div class="d-dow">${DIAS_CORTO[diaSem]}</div><div class="d-num">${d.getDate()}</div><div class="d-mon">${MESES_CORTO[d.getMonth()]}</div>`;
     if (hayBarbero) {
-      card.onclick = () => {
-        document.querySelectorAll('.fecha-card').forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
+      el.onclick = () => {
+        document.querySelectorAll('.date').forEach(c => c.classList.remove('sel'));
+        el.classList.add('sel');
         selFecha = new Date(d); selSlot = null;
-        document.getElementById('btn-2').disabled = false;
+        setNext(true);
       };
-    } else {
-      card.style.opacity = '0.35'; card.style.cursor = 'not-allowed';
     }
-    fechasRow.appendChild(card);
+    row.appendChild(el);
   }
 }
 
-window.toggleInfo = function(id){
-  const el = document.getElementById(id);
-  document.querySelectorAll('.srv-desc.open').forEach(d => { if (d.id !== id) d.classList.remove('open'); });
-  el.classList.toggle('open');
-};
-
-// ---- PASO 3: Barbero + Horarios ----
-window.mostrarBarberos = function(){
-  barberoExpandido = true;
-  renderBarberoChips();
-};
-
-function renderBarberoChips(){
-  const cont = document.getElementById('barbero-chips');
-  const toggle = document.getElementById('barbero-toggle');
+/* ============================================================
+   PASO 3 — Barbero (oculto tras toggle) + Horarios
+   ============================================================ */
+function renderBarberos(){
+  const cont = document.getElementById('barbers');
+  const toggle = document.getElementById('barb-toggle');
   if (!selServicio) { cont.innerHTML=''; return; }
   const candidatos = BARBEROS.filter(b => !selServicio.barberosPermitidos || selServicio.barberosPermitidos.length===0 || selServicio.barberosPermitidos.includes(b.nombre));
-  const expandir = barberoExpandido || prefBarbero!=='cualquiera';
+  const expandir = barberoExpandido || prefBarbero !== 'cualquiera';
 
   if (!expandir) {
     toggle.style.display = 'block';
-    toggle.innerHTML = '¿Tienes un barbero de preferencia? <span class="toggle-link">Elegir</span>';
+    toggle.innerHTML = '¿Tienes un barbero de preferencia? <span class="lnk">Elegir</span>';
     cont.style.display = 'none';
     cont.innerHTML = '';
     return;
@@ -624,35 +618,48 @@ function renderBarberoChips(){
 
   toggle.style.display = 'none';
   cont.style.display = 'flex';
-  let html = `<div class="barb-av${prefBarbero==='cualquiera'?' active':''}" onclick="elegirBarbero('cualquiera')"><div class="av">✦</div><div class="nm">Cualquiera</div></div>`;
+  cont.innerHTML = '';
+
+  const any = document.createElement('div'); any.className = 'barber' + (prefBarbero==='cualquiera' ? ' sel' : '');
+  any.innerHTML = `<div class="b-av">✦</div><div class="b-name">Cualquiera</div>`;
+  any.onclick = () => elegirBarbero('cualquiera');
+  cont.appendChild(any);
+
   candidatos.forEach(b => {
+    const el = document.createElement('div'); el.className = 'barber' + (prefBarbero===b.nombre ? ' sel' : '');
     const ini = (b.nombre||'?').trim().charAt(0).toUpperCase();
-    const vip = b.vip ? '<span class="b-vip">VIP</span>' : '';
-    html += `<div class="barb-av${prefBarbero===b.nombre?' active':''}" onclick="elegirBarbero('${b.nombre}')"><div class="av">${ini}${vip}</div><div class="nm">${b.nombre}</div></div>`;
+    el.innerHTML = `<div class="b-av">${ini}${b.vip ? '<span class="b-vip">VIP</span>' : ''}</div><div class="b-name">${b.nombre}</div>`;
+    el.onclick = () => elegirBarbero(b.nombre);
+    cont.appendChild(el);
   });
-  cont.innerHTML = html;
 }
 
-window.elegirBarbero = function(nombre){
+function elegirBarbero(nombre){
   prefBarbero = nombre;
   selSlot = null;
-  const esYamiChip = (nombre === 'Yami');
-  document.getElementById('aviso-yami').style.display = esYamiChip ? 'block' : 'none';
-  document.getElementById('btn-3').disabled = true;
-  renderBarberoChips();
-  if (esYamiChip) {
-    document.getElementById('horarios-contenido').innerHTML = '';
-    document.getElementById('horarios-sub').textContent = '';
-    return; // no se carga disponibilidad ni se puede continuar; solo WhatsApp
+  selBarbero = null;
+  const esEsp = esBarberoEspecial(nombre);
+  document.getElementById('aviso-yami').style.display = esEsp ? 'block' : 'none';
+  setNext(false);
+  renderBarberos();
+  if (esEsp) {
+    // Yami: agenda especial -> solo WhatsApp, no se carga disponibilidad ni se puede continuar
+    document.getElementById('times').innerHTML = '';
+    document.getElementById('times-lbl').style.display = 'none';
+    document.getElementById('sec3-sub').textContent = '';
+    return;
   }
+  document.getElementById('times-lbl').style.display = '';
   cargarHorarios();
-};
+}
 
 async function cargarHorarios(){
   if (!selFecha || !selServicio) return;
-  const cont = document.getElementById('horarios-contenido');
-  cont.innerHTML = '<div class="loading">Verificando disponibilidad...</div>';
-  document.getElementById('btn-3').disabled = true;
+  const cont = document.getElementById('times');
+  const sub = document.getElementById('sec3-sub');
+  document.getElementById('times-lbl').style.display = '';
+  cont.innerHTML = '<div class="msg">Verificando disponibilidad…</div>';
+  setNext(false);
 
   const key = getDateKey(selFecha);
   const diaSem = selFecha.getDay();
@@ -714,80 +721,143 @@ async function cargarHorarios(){
 
   if (!slotsDisp.length) {
     const quien = prefBarbero==='cualquiera' ? '' : ` con ${prefBarbero}`;
-    cont.innerHTML = `<div class="no-disponible">😔 No hay horarios disponibles${quien} para este día.<br>Intenta con otra fecha${prefBarbero!=='cualquiera'?' o elige "Cualquiera"':''}.</div>`;
+    cont.innerHTML = `<div class="msg">😔 No hay horarios disponibles${quien} para este día.<br>Intenta con otra fecha${prefBarbero!=='cualquiera'?' o elige "Cualquiera"':''}.</div>`;
+    sub.textContent = '';
     return;
   }
 
-  document.getElementById('horarios-sub').textContent = `${slotsDisp.length} horarios disponibles`;
-  const hgrid = document.createElement('div'); hgrid.className = 'horarios-grid';
+  sub.textContent = `${slotsDisp.length} horarios disponibles`;
+  const grid = document.createElement('div'); grid.className = 'times';
   slotsDisp.forEach(({slot, barbero}) => {
-    const card = document.createElement('div'); card.className = 'hora-card';
-    card.textContent = slot12hr(slot);
-    card.onclick = () => {
-      document.querySelectorAll('.hora-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
+    const el = document.createElement('div'); el.className = 'time';
+    el.textContent = slot12hr(slot);
+    el.onclick = () => {
+      document.querySelectorAll('.time').forEach(c => c.classList.remove('sel'));
+      el.classList.add('sel');
       selSlot = slot;
       selBarbero = barbero;
-      document.getElementById('btn-3').disabled = false;
+      setNext(true);
     };
-    hgrid.appendChild(card);
+    grid.appendChild(el);
   });
   cont.innerHTML = '';
-  cont.appendChild(hgrid);
+  cont.appendChild(grid);
 }
 
-window.irPaso = function(paso){
-  if (paso===5) {
-    const nombre = document.getElementById('d-nombre').value.trim();
-    const tel = document.getElementById('d-telefono').value.trim();
-    if (!nombre) { showToast('Ingresa tu nombre'); return; }
-    if (!tel || tel.length<10) { showToast('Ingresa tu número de WhatsApp'); return; }
-    renderResumen();
-  }
-  if (paso===3) { renderBarberoChips(); cargarHorarios(); }
-
-  pasoActual = paso;
-  for (let i=1; i<=5; i++) {
-    document.getElementById('sec-'+i).className = 'section' + (i===paso ? ' active' : '');
-    const stepEl = document.getElementById('step-'+i);
-    stepEl.className = 'step' + (i===paso ? ' active' : i<paso ? ' done' : '');
-  }
-};
-
-function renderResumen(){
-  const nombre = document.getElementById('d-nombre').value.trim();
-  const tel = document.getElementById('d-telefono').value.trim();
-  const com = document.getElementById('d-comentario').value.trim();
+/* ============================================================
+   PASO 5 — Resumen + Aviso de privacidad
+   ============================================================ */
+function renderSum(){
   const d = selFecha;
-  const esYami = selBarbero === 'Yami';
   const esLibre = prefBarbero === 'cualquiera';
-  document.getElementById('pendiente-card').style.display = esYami ? 'block' : 'none';
-  document.getElementById('btn-enviar').textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
-  document.getElementById('resumen-card').innerHTML = `
-    <div class="res-row"><span class="res-lbl">Servicio</span><span class="res-val">${selServicio.nombre}</span></div>
-    <div class="res-row"><span class="res-lbl">Duración</span><span class="res-val">${duracionLabel(selServicio.slots)}</span></div>
-    <div class="res-row"><span class="res-lbl">Fecha</span><span class="res-val">${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}</span></div>
-    <div class="res-row"><span class="res-lbl">Horario</span><span class="res-val">${slot12hr(selSlot)}</span></div>
-    <div class="res-row"><span class="res-lbl">Barbero</span><span class="res-val">${esLibre ? 'Libre (el primero disponible)' : selBarbero}</span></div>
-    <div class="res-row"><span class="res-lbl">Nombre</span><span class="res-val">${nombre}</span></div>
-    ${tel?`<div class="res-row"><span class="res-lbl">Teléfono</span><span class="res-val">${tel}</span></div>`:''}
-    ${com?`<div class="res-row"><span class="res-lbl">Comentario</span><span class="res-val">${com}</span></div>`:''}
-  `;
+  const esEsp = esBarberoEspecial(selBarbero);
+  document.getElementById('pend').style.display = esEsp ? 'block' : 'none';
+  const com = val('f-com');
+  document.getElementById('sum').innerHTML = `
+    <div class="sum-row"><span class="sum-l">Servicio</span><span class="sum-v">${selServicio.nombre}</span></div>
+    <div class="sum-row"><span class="sum-l">Duración</span><span class="sum-v">${duracionLabel(selServicio.slots)}</span></div>
+    <div class="sum-row"><span class="sum-l">Fecha</span><span class="sum-v">${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}</span></div>
+    <div class="sum-row"><span class="sum-l">Horario</span><span class="sum-v accent">${slot12hr(selSlot)}</span></div>
+    <div class="sum-row"><span class="sum-l">Barbero</span><span class="sum-v">${esLibre ? 'Libre (el primero disponible)' : selBarbero}</span></div>
+    <div class="sum-row"><span class="sum-l">Nombre</span><span class="sum-v">${val('f-nombre')||'—'}</span></div>
+    <div class="sum-row"><span class="sum-l">WhatsApp</span><span class="sum-v">${val('f-tel')||'—'}</span></div>
+    ${com ? `<div class="sum-row"><span class="sum-l">Comentario</span><span class="sum-v">${com}</span></div>` : ''}`;
 }
 
-window.enviarSolicitud = async function(){
-  const btn = document.getElementById('btn-enviar');
-  const nombre = document.getElementById('d-nombre').value.trim();
-  const tel = document.getElementById('d-telefono').value.trim();
-  const com = document.getElementById('d-comentario').value.trim();
+function renderAvisoPrivacidad(){
+  const host = document.getElementById('aviso-privacidad');
+  const c = AVISO_PRIVACIDAD;
+  if (!c.enabled) { host.innerHTML=''; host.style.display='none'; return; }
+  host.style.display = 'block';
+
+  const lock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>';
+  const iconHtml = c.show_icon ? `<div class="priv-ic">${lock}</div>` : '';
+  const titleHtml = (c.show_title && c.title) ? `<div class="priv-t">${c.title}</div>` : '';
+
+  let legal = c.legal_text || '';
+  if (legal && c.privacy_policy_url) {
+    legal = legal.replace(/Aviso de Privacidad/i, `<a href="${c.privacy_policy_url}" target="_blank" rel="noopener">Aviso de Privacidad</a>`);
+  }
+
+  if (c.acceptance_mode === 'checkbox_required') {
+    host.innerHTML = `
+      <div class="priv-head">${iconHtml}${titleHtml}</div>
+      ${c.description ? `<div class="priv-d">${c.description}</div>` : ''}
+      <label class="priv-check"><input type="checkbox" id="priv-check-input"><span>${legal || 'Acepto el Aviso de Privacidad.'}</span></label>`;
+    const cb = document.getElementById('priv-check-input');
+    if (cb) cb.onchange = () => setNext(privacyOk());
+  } else {
+    host.innerHTML = `
+      <div class="priv-head">${iconHtml}${titleHtml}</div>
+      ${c.description ? `<div class="priv-d">${c.description}</div>` : ''}
+      ${legal ? `<div class="priv-legal">${legal}</div>` : ''}`;
+  }
+}
+
+function privacyOk(){
+  const c = AVISO_PRIVACIDAD;
+  if (!c.enabled) return true;
+  if (c.acceptance_mode === 'checkbox_required') {
+    const cb = document.getElementById('priv-check-input');
+    return !!(cb && cb.checked);
+  }
+  return true; // implicit
+}
+
+/* ============================================================
+   NAVEGACIÓN
+   ============================================================ */
+function go(n){
+  if (n < 1 || n > 5) return;
+  if (n > step && step === 4) {
+    if (!val('f-nombre')) { toast('Ingresa tu nombre'); return; }
+    if (val('f-tel').length < 10) { toast('Ingresa tu WhatsApp (10 dígitos)'); return; }
+  }
+
+  step = n;
+  document.querySelectorAll('.section').forEach((s,i) => s.classList.toggle('active', i===step-1));
+  paint();
+  btnBack.style.display = step>1 ? 'block' : 'none';
+  btnNext.textContent = step===5 ? (esBarberoEspecial(selBarbero) ? 'Solicitar cita' : 'Confirmar cita') : 'Continuar';
+
+  if (step === 1) {
+    setNext(!!selServicio && !esServicioEspecial(selServicio));
+  } else if (step === 2) {
+    setNext(!!selFecha);
+  } else if (step === 3) {
+    renderBarberos();
+    if (esBarberoEspecial(prefBarbero)) {
+      setNext(false);
+    } else {
+      cargarHorarios();
+      setNext(!!selSlot);
+    }
+  } else if (step === 4) {
+    setNext(true);
+  } else if (step === 5) {
+    renderSum();
+    renderAvisoPrivacidad();
+    setNext(privacyOk());
+  }
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+/* ============================================================
+   ENVÍO A FIRESTORE (con revalidación anti-doble-reserva)
+   ============================================================ */
+async function submit(){
+  const nombre = val('f-nombre'), tel = val('f-tel'), com = val('f-com');
   const d = selFecha;
-  const esYami = selBarbero === 'Yami';
+  const esYami = esBarberoEspecial(selBarbero);
   const folio = 'GAR-' + Date.now().toString().slice(-6);
 
-  btn.disabled = true; btn.textContent = 'Enviando...';
+  if (!privacyOk()) { toast('Acepta el aviso de privacidad para continuar'); return; }
+
+  setNext(false);
+  btnNext.textContent = 'Enviando…';
 
   try {
-    // --- REVALIDACIÓN ANTI-DOBLE-RESERVA (Fallo 1) ---
+    // --- REVALIDACIÓN ANTI-DOBLE-RESERVA ---
     // Volvemos a verificar que el hueco siga libre JUSTO antes de guardar,
     // por si alguien lo ocupó mientras el cliente llenaba sus datos.
     const keyRV = getDateKey(d);
@@ -806,10 +876,9 @@ window.enviarSolicitud = async function(){
       return iniRV < cFin && cIni < finRV; // ¿se traslapan?
     });
     if (seOcupo) {
-      showToast('Ese horario se acaba de ocupar 😕 Por favor elige otro.', 6000);
-      btn.disabled = false;
-      btn.textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
-      window.irPaso(3); // lo regresamos a escoger hora (esto recarga la disponibilidad)
+      toast('Ese horario se acaba de ocupar 😕 Por favor elige otro.', 6000);
+      btnNext.textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
+      go(3); // lo regresamos a escoger hora (esto recarga la disponibilidad)
       return;
     }
     // --- fin revalidación ---
@@ -837,69 +906,85 @@ window.enviarSolicitud = async function(){
       });
     }
 
-    renderTicket({ esYami, folio, nombre, tel, d });
-    for (let i=1; i<=5; i++) document.getElementById('sec-'+i).className = 'section';
-    document.getElementById('confirmacion').style.display = 'flex';
-    document.querySelector('.steps').style.display = 'none';
+    mostrarConfirmacion({ esYami, folio, nombre, tel, d });
 
   } catch(e) {
-    showToast('Error al enviar. Intenta de nuevo.');
-    btn.disabled = false; btn.textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
+    toast('Error al enviar. Intenta de nuevo.');
+    setNext(true);
+    btnNext.textContent = esYami ? 'Solicitar cita' : 'Confirmar cita';
   }
-};
-
-function renderTicket({ esYami, folio, nombre, tel, d }){
-  const fecha = `${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
-  const headClass = esYami ? 'wait' : 'ok';
-  const estadoChico = esYami ? 'En espera' : 'Confirmada';
-  const estadoGrande = esYami ? '⏳ Por confirmar' : '✅ ¡Cita confirmada!';
-  const foot = esYami
-    ? 'Tu cita con Yami quedó en la cola de recepción. En cuanto la confirmen te avisamos por WhatsApp.'
-    : 'Tu cita ya quedó agendada. Te esperamos. Si necesitas cambiarla, escríbenos por WhatsApp.';
-
-  document.getElementById('confirmacion').innerHTML = `
-    <div class="seal"><svg viewBox="0 0 44 44"><path class="chk" d="M12 23 l7 7 l14 -16"/></svg></div>
-    <div class="seal-title">${esYami ? 'Solicitud enviada' : '¡Cita reservada!'}</div>
-    <div class="seal-sub">${foot}</div>
-    <div class="ticket">
-      <div class="ticket-head ${headClass}">
-        <div class="t-brand">Barbería <em>Garage</em></div>
-        <div class="t-status">${esYami ? 'Solicitud en espera' : 'Cita confirmada'}</div>
-      </div>
-      <div class="ticket-body">
-        <div class="ticket-row"><span class="ticket-lbl">Servicio</span><span class="ticket-val">${selServicio.nombre}</span></div>
-        <div class="ticket-row"><span class="ticket-lbl">Fecha</span><span class="ticket-val">${fecha}</span></div>
-        <div class="ticket-row"><span class="ticket-lbl">Horario</span><span class="ticket-val">${slot12hr(selSlot)}</span></div>
-        <div class="ticket-row"><span class="ticket-lbl">Barbero</span><span class="ticket-val">${prefBarbero==='cualquiera' ? 'Libre' : selBarbero}</span></div>
-        <div class="ticket-row"><span class="ticket-lbl">Nombre</span><span class="ticket-val">${nombre}</span></div>
-        ${tel?`<div class="ticket-row"><span class="ticket-lbl">WhatsApp</span><span class="ticket-val">${tel}</span></div>`:''}
-        <div class="ticket-foot">${foot}</div>
-      </div>
-    </div>
-    <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;background:#12e06a;color:#04180d;">💬 Contactar por WhatsApp</a>
-    <button class="btn-secondary" onclick="reiniciar()" style="margin-top:8px;">Reservar otra cita</button>
-  `;
 }
 
-window.reiniciar = function(){
-  selServicio=null; selFecha=null; selSlot=null; selBarbero=null; prefBarbero='cualquiera'; barberoExpandido=false;
-  document.querySelectorAll('.srv-card').forEach(c => c.classList.remove('selected'));
-  document.querySelectorAll('.fecha-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('d-nombre').value = '';
-  document.getElementById('d-telefono').value = '';
-  document.getElementById('d-comentario').value = '';
-  document.getElementById('btn-1').disabled = true;
-  document.getElementById('btn-2').disabled = true;
-  document.getElementById('btn-3').disabled = true;
-  const be = document.getElementById('btn-enviar');
-  if (be) { be.disabled = false; be.textContent = 'Confirmar cita'; }
-  const av = document.getElementById('aviso-yami'); if (av) av.style.display = 'none';
-  const avo = document.getElementById('aviso-ondulado'); if (avo) avo.style.display = 'none';
-  document.getElementById('confirmacion').style.display = 'none';
-  document.querySelector('.steps').style.display = 'flex';
-  irPaso(1);
-};
+function mostrarConfirmacion({ esYami, folio, nombre, tel, d }){
+  document.querySelector('.header').style.display = 'none';
+  stampsEl.style.display = 'none';
+  document.getElementById('actions').style.display = 'none';
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
 
+  const fecha = `${DIAS_N[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+  const estado = esYami ? 'En espera · por confirmar' : 'Cita confirmada';
+  const folioHtml = MOSTRAR_FOLIO ? `<div class="t-folio">FOLIO ${folio}</div>` : '';
+
+  document.getElementById('ticket').innerHTML = `
+    <div class="t-head"><div class="t-brand">Barbería <em>Garage</em></div><div class="t-status">${estado}</div></div>
+    <div class="t-body" style="padding-top:14px">
+      ${folioHtml}
+      <div class="t-row"><span class="t-l">Servicio</span><span class="t-v">${selServicio.nombre}</span></div>
+      <div class="t-row"><span class="t-l">Fecha</span><span class="t-v">${fecha}</span></div>
+      <div class="t-row"><span class="t-l">Horario</span><span class="t-v">${slot12hr(selSlot)}</span></div>
+      <div class="t-row"><span class="t-l">Barbero</span><span class="t-v">${prefBarbero==='cualquiera' ? 'Libre' : selBarbero}</span></div>
+      <div class="t-row"><span class="t-l">Nombre</span><span class="t-v">${nombre}</span></div>
+      ${tel ? `<div class="t-row"><span class="t-l">WhatsApp</span><span class="t-v">${tel}</span></div>` : ''}
+    </div>`;
+
+  document.getElementById('confirm').classList.add('show');
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function reset(){
+  selServicio=null; selFecha=null; selSlot=null; selBarbero=null; prefBarbero='cualquiera'; barberoExpandido=false;
+  ['f-nombre','f-tel','f-com'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  document.getElementById('confirm').classList.remove('show');
+  document.querySelector('.header').style.display = '';
+  stampsEl.style.display = '';
+  document.getElementById('actions').style.display = '';
+  document.getElementById('aviso-yami').style.display = 'none';
+  document.getElementById('aviso-ondulado').style.display = 'none';
+  document.getElementById('times-lbl').style.display = '';
+  document.getElementById('sec3-sub').textContent = 'Horarios disponibles.';
+  document.querySelectorAll('.srv,.date,.time,.barber').forEach(c => c.classList.remove('sel'));
+  renderServicios(); renderFechas();
+  go(1);
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let _tT;
+function toast(m, ms=2500){
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div'); t.id='_toast';
+    t.style.cssText='position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#1b1b1e;border:1px solid #242428;color:#f4f2ee;padding:12px 18px;border-radius:12px;font-size:13px;font-weight:600;z-index:80;box-shadow:0 8px 24px rgba(0,0,0,.5);transition:opacity .3s;max-width:88%;text-align:center';
+    document.body.appendChild(t);
+  }
+  t.textContent = m; t.style.opacity='1';
+  clearTimeout(_tT); _tT = setTimeout(()=>t.style.opacity='0', ms);
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+btnNext.onclick = () => { if (step<5) go(step+1); else submit(); };
+btnBack.onclick = () => go(step-1);
+document.getElementById('barb-toggle').onclick = () => { barberoExpandido = true; renderBarberos(); };
+document.getElementById('btn-reset').onclick = reset;
+
+document.getElementById('wa-float').href = WA_URL;
+document.getElementById('wa-yami').href = WA_URL;
+document.getElementById('wa-ondulado').href = WA_URL;
+
+paint();
 escucharBarberos();
 escucharServicios();
 </script>
