@@ -275,14 +275,19 @@
   .wa-fab{ display:flex; align-items:center; gap:8px; padding:12px 18px; border-radius:30px; background:#12e06a !important; color:#04180d !important;
     font-weight:700; box-shadow:0 0 20px rgba(18,224,106,.6), 0 6px 18px rgba(18,224,106,.35) !important; animation:waGlow 2.6s ease-in-out infinite; }
   @keyframes waGlow{ 0%,100%{box-shadow:0 0 16px rgba(18,224,106,.45), 0 6px 18px rgba(18,224,106,.3);} 50%{box-shadow:0 0 26px rgba(18,224,106,.75), 0 6px 20px rgba(18,224,106,.4);} }
-  /* Punto 2 — barra de navegación fija abajo (Continuar + Regresar juntos, fondo sólido) */
-  .app{ padding-bottom:150px; }
-  .nav-bar{ position:fixed; left:50%; transform:translateX(-50%); bottom:0; width:100%; max-width:480px; z-index:30;
-    display:flex; flex-direction:column; gap:8px; padding:14px 20px calc(14px + env(safe-area-inset-bottom));
-    background:linear-gradient(180deg, rgba(10,10,11,0) 0%, var(--bg) 22%); }
-  .nav-bar .btn-primary{ margin-top:0; }
-  .nav-bar .btn-secondary{ margin-top:0; }
-  .wa-fab{ bottom:calc(150px + env(safe-area-inset-bottom)) !important; }
+  /* Punto 2 — barra de acción fija abajo (técnica Onyx de Code: pointer-events + degradado) */
+  .app{ padding-bottom:110px; }
+  .actions{ position:fixed; left:0; right:0; bottom:0; z-index:30; margin:0 auto; max-width:480px;
+    padding:16px 20px calc(16px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,transparent,var(--bg) 32%); pointer-events:none; }
+  .actions > *{ pointer-events:auto; }
+  .row-btns{ display:flex; gap:10px; }
+  .actions .btn-primary{ flex:1; margin:0; }
+  .actions .btn-back{ flex-shrink:0; padding:16px 18px; margin:0; background:transparent; color:var(--txt-2);
+    border:1px solid var(--line); border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+    transition:transform .28s var(--spring), border-color .2s; }
+  .actions .btn-back:active{ transform:scale(.94); }
+  .wa-fab{ bottom:calc(96px + env(safe-area-inset-bottom)) !important; }
   /* Punto 4 — ticket: etiquetas claras (izq), valores en oro (der) */
   .ticket-lbl{ color:var(--txt) !important; }
   .ticket-val{ color:var(--gold-soft) !important; font-weight:700; }
@@ -319,7 +324,9 @@
       <div class="aviso-yami-sub">Este servicio lo realiza solo Yami, con agenda especial. Por favor envíanos WhatsApp para agendarlo.</div>
       <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:0.75rem;background:#12e06a;color:#04180d;">💬 Escribir por WhatsApp</a>
     </div>
-    <div class="nav-bar"><button class="btn-primary" id="btn-1" onclick="irPaso(2)" disabled>Continuar</button></div>
+    <div class="actions"><div class="row-btns">
+      <button class="btn-primary" id="btn-1" onclick="irPaso(2)" disabled>Continuar</button>
+    </div></div>
   </div>
 
   <!-- PASO 2: FECHA -->
@@ -327,10 +334,10 @@
     <div class="section-title">¿Cuándo quieres venir?</div>
     <div class="section-sub">Selecciona un día disponible</div>
     <div class="fechas-row" id="fechas-row"></div>
-    <div class="nav-bar">
+    <div class="actions"><div class="row-btns">
+      <button class="btn-back" onclick="irPaso(1)" aria-label="Regresar">←</button>
       <button class="btn-primary" id="btn-2" onclick="irPaso(3)" disabled>Continuar</button>
-      <button class="btn-secondary" onclick="irPaso(1)">← Regresar</button>
-    </div>
+    </div></div>
   </div>
 
   <!-- PASO 3: HORARIO + BARBERO -->
@@ -345,10 +352,10 @@
       <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:0.75rem;background:#25d366;color:#fff;">💬 Escribir por WhatsApp</a>
     </div>
     <div id="horarios-contenido"><div class="loading">Cargando horarios...</div></div>
-    <div class="nav-bar">
+    <div class="actions"><div class="row-btns">
+      <button class="btn-back" onclick="irPaso(2)" aria-label="Regresar">←</button>
       <button class="btn-primary" id="btn-3" onclick="irPaso(4)" disabled>Continuar</button>
-      <button class="btn-secondary" onclick="irPaso(2)">← Regresar</button>
-    </div>
+    </div></div>
   </div>
 
   <!-- PASO 4: DATOS -->
@@ -362,10 +369,10 @@
       <div style="font-size:11px;color:#f59e0b;margin-top:4px;">⚠️ Si tu cita no es aceptada te contactaremos por este número</div>
     </div>
     <div class="fg"><label class="fl">Comentario (opcional)</label><input class="fi" type="text" id="d-comentario" placeholder="Ej: llego 10 min tarde, alguna preferencia..." /></div>
-    <div class="nav-bar">
+    <div class="actions"><div class="row-btns">
+      <button class="btn-back" onclick="irPaso(3)" aria-label="Regresar">←</button>
       <button class="btn-primary" onclick="irPaso(5)">Continuar</button>
-      <button class="btn-secondary" onclick="irPaso(3)">← Regresar</button>
-    </div>
+    </div></div>
   </div>
 
   <!-- PASO 5: RESUMEN -->
@@ -377,10 +384,10 @@
       <div class="pendiente-sub">Las citas con Yami quedan en espera hasta que recepción las confirme. Te avisaremos por WhatsApp.</div>
     </div>
     <div class="resumen-card" id="resumen-card"></div>
-    <div class="nav-bar">
+    <div class="actions"><div class="row-btns">
+      <button class="btn-back" onclick="irPaso(4)" aria-label="Regresar">←</button>
       <button class="btn-primary" id="btn-enviar" onclick="enviarSolicitud()">Confirmar cita</button>
-      <button class="btn-secondary" onclick="irPaso(4)">← Regresar</button>
-    </div>
+    </div></div>
   </div>
 
   <!-- CONFIRMACION FINAL -->
@@ -532,7 +539,7 @@ function renderServiciosGrid(){
     if (s.precio || s.precioVip) {
       precioHtml = `<div class="srv-precio">`;
       if (s.precio) precioHtml += `<span class="reg">Precio <b>$${s.precio}</b></span>`;
-      if (s.precioVip) precioHtml += `<span class="vipp">Con Edson <span class="vip-tag">VIP</span> <b>$${s.precioVip}</b></span>`;
+      if (s.precioVip) precioHtml += `<span class="vipp"><span class="vip-tag">VIP</span> <b>$${s.precioVip}</b></span>`;
       precioHtml += `</div>`;
     }
     const card = document.createElement('div'); card.className='srv-card';
