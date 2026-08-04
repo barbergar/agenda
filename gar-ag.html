@@ -457,36 +457,27 @@ function renderColaAvisos(){
   if (avisosWeb.length === 0) { cont.innerHTML = ''; return; }
   let html = `<div class="cola-titulo">🎫 Avisos pendientes (${avisosWeb.length})</div>`;
   avisosWeb.forEach(a => {
-    const esYami = a.tipo === 'yami';
-    const color = esYami ? '#f59e0b' : '#22c55e';
-    const etq = esYami ? '⏳ Por confirmar' : '✅ Agendada';
-    const tel = a.telefono ? `<div class="ta-tel">📱 ${a.telefono}</div>` : '';
-    const btnTxt = esYami ? 'Revisar' : 'Atender';
-    const btnBg = esYami ? '#f59e0b' : '#22c55e';
-    const btnFg = esYami ? '#2d1600' : '#04210f';
+    const color = '#22c55e';
+    const etq = '✅ Agendada';
     html += `<div class="ticket-aviso" style="border-left-color:${color}">
       <div class="ta-etq" style="color:${color}">${etq}</div>
       <div class="ta-nombre">${a.nombre} · ${a.barbero}</div>
       <div class="ta-sub">${a.servicio||''} · ${slot12hr(a.slot)}</div>
-      ${tel}
-      <button class="ta-btn" style="background:${btnBg};color:${btnFg}" onclick="atenderAviso('${a.id}','${a.tipo}')">${btnTxt}</button>
+      <button class="ta-btn" style="background:${color};color:#04210f" onclick="atenderAviso('${a.id}')">Entendido</button>
     </div>`;
   });
   cont.innerHTML = html;
 }
-window.atenderAviso = function(id, tipo){
-  if (tipo === 'yami') { decidirSolicitud(id); return; }
+window.atenderAviso = function(id){
   avisosWeb = avisosWeb.filter(a => a.id !== id);
   renderColaAvisos();
 };
 
 let fechaActual = new Date(); fechaActual.setHours(0,0,0,0);
 let citas = [];
-let solicitudes = [];
-// --- Avisos de web (citas directas + solicitudes Yami) ---
-let avisosWeb = [];              // {tipo:'directa'|'yami', nombre, barbero, slot, servicio, ts, id}
+// --- Avisos de web (citas directas) ---
+let avisosWeb = [];              // {tipo:'directa', nombre, barbero, slot, servicio, ts, id}
 let idsCitasVistas = null;       // Set de ids de citas ya conocidas (null = primera carga)
-let idsSolVistas = null;         // Set de ids de solicitudes ya conocidas
 function beep(){
   try {
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
@@ -498,7 +489,6 @@ function beep(){
     o.start(); o.stop(ctx.currentTime+0.4);
   } catch(e){}
 }
-let unsubSolicitudes = null;
 let unsubCitas = null;
 let unsubBarberos = null;
 let unsubServicios = null;
@@ -674,28 +664,6 @@ function escucharCitas(){
     renderGrid();
     verificarConfirmaciones();
   });
-  if (unsubSolicitudes) unsubSolicitudes();
-  unsubSolicitudes = onSnapshot(query(collection(db,'solicitudes'), where('fecha','==',getDateKey(fechaActual)), where('estado','==','pendiente')), snap => {
-    solicitudes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    const ids = new Set(solicitudes.map(s=>s.id));
-    if (idsSolVistas !== null) {
-      solicitudes.forEach(s => {
-        if (!idsSolVistas.has(s.id)) {
-          avisosWeb.unshift({ tipo:'yami', nombre:s.nombre, barbero:s.barbero, slot:s.slot, servicio:s.servicio, telefono:s.telefono, ts:s.ts||Date.now(), id:s.id });
-          beep(); renderColaAvisos();
-        }
-      });
-    } else if (solicitudes.length > 0) {
-      // Primera carga: si ya había pendientes, ponlas en la cola sin sonar
-      solicitudes.forEach(s => avisosWeb.push({ tipo:'yami', nombre:s.nombre, barbero:s.barbero, slot:s.slot, servicio:s.servicio, telefono:s.telefono, ts:s.ts||Date.now(), id:s.id }));
-      renderColaAvisos();
-    }
-    idsSolVistas = ids;
-    renderGrid();
-    if (solicitudes.length > 0 && Notification.permission === 'granted') {
-      new Notification('Barbería Garage', { body: `${solicitudes.length} solicitud(es) pendiente(s) de aprobación`, icon: '/favicon.ico' });
-    }
-  });
   if (Notification.permission === 'default') Notification.requestPermission();
 }
 
@@ -806,24 +774,7 @@ function renderGrid(){
           tbHtml += `<td class="slot${esEntera?' hora-entera':''}"></td>`;
         }
       } else {
-        const sol = solicitudes.find(s => {
-          if (s.barbero !== b.nombre) return false;
-          const si = slotToMin(s.slot); return slotMin>=si && slotMin<si+(s.slots||1)*30;
-        });
-        if (sol && sol.slot === slot) {
-          const h2 = (sol.slots||1)*38 - 4;
-          tbHtml += `<td class="slot${esEntera?' hora-entera':''}">
-            <div class="cita" style="height:${h2}px;background:#1a1200;border-left:3px solid #f59e0b;cursor:pointer;" onclick="abrirSolicitud('${sol.id}',event)">
-              <div class="cita-nombre" style="color:#f59e0b;">⏳ ${sol.nombre||''}</div>
-              <div class="cita-servicio">${sol.servicio||''}</div>
-              <div class="cita-hora-txt">${slot12hr(sol.slot)} · Pendiente</div>
-            </div>
-          </td>`;
-        } else if (sol) {
-          tbHtml += `<td class="slot${esEntera?' hora-entera':''}"></td>`;
-        } else {
-          tbHtml += `<td class="slot${esEntera?' hora-entera':''}" onclick="abrirNueva('${b.nombre}','${slot}')"></td>`;
-        }
+        tbHtml += `<td class="slot${esEntera?' hora-entera':''}" onclick="abrirNueva('${b.nombre}','${slot}')"></td>`;
       }
     });
     tbHtml += `</tr>`;
@@ -1022,39 +973,6 @@ window.marcarNoShow = async function(){
   if (!editId) return;
   await updateDoc(doc(db,'citas',editId), { tipo:'cancelado', confirmado:true });
   showToast('Marcado como no llegó'); cerrarModal();
-};
-
-window.abrirSolicitud = function(id, e){
-  e.stopPropagation();
-  decidirSolicitud(id);
-};
-
-window.decidirSolicitud = function(id){
-  const sol = solicitudes.find(s => s.id===id); if (!sol) return;
-  if (confirm(`SOLICITUD PENDIENTE
-
-Cliente: ${sol.nombre}
-Servicio: ${sol.servicio}
-Horario: ${slot12hr(sol.slot)}
-Teléfono: ${sol.telefono||'No proporcionó'}
-${sol.comentario?'Comentario: '+sol.comentario:''}
-
-¿Aprobar esta cita?`)) {
-    updateDoc(doc(db,'solicitudes',id), { estado:'aprobada' }).then(() => {
-      addDoc(collection(db,'citas'), {
-        barbero: sol.barbero, nombre: sol.nombre, servicio: sol.servicio,
-        slots: sol.slots, slot: sol.slot, fecha: sol.fecha,
-        telefono: sol.telefono||'', comentario: sol.comentario||'',
-        tipo: 'fijo', confirmado:false, origenAprobada:true, ts:Date.now()
-      });
-    });
-    avisosWeb = avisosWeb.filter(a => a.id !== id); renderColaAvisos();
-    showToast('Cita aprobada ✓');
-  } else if (confirm('¿Rechazar esta solicitud?')) {
-    updateDoc(doc(db,'solicitudes',id), { estado:'rechazada' });
-    avisosWeb = avisosWeb.filter(a => a.id !== id); renderColaAvisos();
-    showToast('Solicitud rechazada');
-  }
 };
 
 window.activarDia = async function(nombre){
@@ -1338,6 +1256,5 @@ escucharOverrides();
 
 setInterval(() => { renderGrid(); verificarConfirmaciones(); }, 60000);
 </script>
-<a href="https://wa.me/522223961602" target="_blank" style="position:fixed;bottom:1.5rem;right:1rem;background:#25d366;border-radius:30px;display:flex;align-items:center;gap:8px;padding:12px 18px;text-decoration:none;box-shadow:0 4px 12px rgba(37,211,102,.4);z-index:50;font-size:14px;font-weight:600;color:#fff;transition:transform .15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">💬 Escríbenos por WhatsApp</a>
 </body>
 </html>
