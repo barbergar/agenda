@@ -129,6 +129,153 @@
     .loading { text-align: center; padding: 2rem; color: #444; font-size: 14px; }
     .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #f0f0f0; color: #111; padding: 0.9rem 1.4rem; border-radius: 16px; font-size: 16px; line-height: 1.35; max-width: 88%; text-align: center; z-index: 100; display: none; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
   </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+  /* ===== ONYX MOTION — capa visual (no cambia lógica) ===== */
+  :root{
+    --bg:#0a0a0b; --panel:#141416; --panel-2:#1b1b1e;
+    --line:#242428; --line-soft:#1c1c20;
+    --txt:#f4f2ee; --txt-2:#8f8b84; --txt-3:#5a5751;
+    --gold:#c9a24b; --gold-soft:#d9b768; --gold-dim:#6d5a2c;
+    --spring:cubic-bezier(.34,1.25,.5,1); --ease:cubic-bezier(.4,0,.2,1);
+  }
+  body{ font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    background:radial-gradient(1200px 600px at 50% -10%, #17130a 0%, transparent 55%), var(--bg); color:var(--txt); }
+  .app{ padding-left:20px; padding-right:20px; }
+
+  /* HEADER */
+  .header{ border-bottom:none; padding:40px 0 8px; }
+  .header::before{ content:'BARBERÍA · EST. 2017'; display:block; font-size:10px; letter-spacing:5px; color:var(--gold); text-transform:uppercase; opacity:.9; margin-bottom:6px; }
+  .logo{ font-family:'Playfair Display',serif; font-weight:700; font-size:40px; letter-spacing:.5px;
+    background:linear-gradient(180deg,#fbf7ee,#cfc7b6); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .header-sub{ color:var(--txt-3); letter-spacing:3px; margin-top:8px; }
+
+  /* STEPS → sellos con rebote */
+  .steps{ padding:22px 4px 6px; gap:6px; }
+  .step::after{ display:none; }
+  .step-num{ width:32px; height:32px; border-radius:50%; background:var(--panel); border:1px solid var(--line); color:var(--txt-3);
+    font-weight:700; transition:transform .4s var(--spring), background .3s, border-color .3s, color .3s; }
+  .step.active .step-num{ color:#161206; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); border-color:var(--gold); transform:scale(1.14); box-shadow:0 6px 16px rgba(201,162,75,.28); }
+  .step.done .step-num{ color:var(--gold-soft); background:#221c10; border-color:var(--gold-dim); }
+  .step-label{ color:var(--txt-3); letter-spacing:.05em; }
+  .step.active .step-label{ color:var(--txt); }
+
+  /* SECTIONS */
+  .section.active{ animation:onyxpop .5s var(--spring) both; }
+  @keyframes onyxpop{ from{opacity:0; transform:translateY(18px) scale(.97);} to{opacity:1; transform:translateY(0) scale(1);} }
+  .section-title{ font-family:'Playfair Display',serif; font-size:27px; font-weight:700; line-height:1.15; }
+  .section-sub{ font-size:13.5px; color:var(--txt-2); }
+
+  /* SERVICIOS → lista de una columna, tarjeta premium con ícono */
+  .servicios-grid{ display:flex; flex-direction:column; gap:11px; }
+  .srv-card{ background:linear-gradient(180deg,var(--panel),#101012); border:1px solid var(--line); border-radius:16px; padding:15px 16px;
+    transition:transform .32s var(--spring), border-color .25s, background .25s; }
+  .srv-card:active{ transform:scale(.985); }
+  .srv-card.selected{ border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); transform:scale(1.015); box-shadow:0 8px 22px rgba(201,162,75,.12); }
+  .srv-top{ display:flex; align-items:center; gap:13px; }
+  .srv-ic{ width:44px; height:44px; flex-shrink:0; border-radius:12px; display:grid; place-items:center; color:var(--txt-2);
+    background:var(--panel-2); border:1px solid var(--line); transition:transform .32s var(--spring), background .25s, border-color .25s, color .25s; }
+  .srv-ic svg{ width:23px; height:23px; }
+  .srv-card.selected .srv-ic{ border-color:var(--gold-dim); background:#221c10; color:var(--gold-soft); transform:scale(1.08) rotate(-4deg); }
+  .srv-mid{ flex:1; min-width:0; }
+  .srv-nombre{ font-size:15px; font-weight:600; letter-spacing:.2px; padding-right:0; }
+  .srv-duracion{ font-size:12px; color:var(--txt-2); margin-top:3px; }
+  .srv-tick{ width:23px; height:23px; border-radius:50%; border:1px solid var(--line); flex-shrink:0; position:relative;
+    transition:transform .32s var(--spring), background .25s, border-color .25s; }
+  .srv-card.selected .srv-tick{ border-color:var(--gold); background:var(--gold); transform:scale(1.05); }
+  .srv-tick::after{ content:''; position:absolute; left:7.5px; top:4px; width:5px; height:9px; border:solid #0a0a0b; border-width:0 2px 2px 0; transform:rotate(45deg) scale(0); transition:transform .35s var(--spring); }
+  .srv-card.selected .srv-tick::after{ transform:rotate(45deg) scale(1); }
+  .info-btn{ position:static; width:23px; height:23px; flex-shrink:0; border-radius:50%; border:1px solid var(--gold-dim); background:transparent; color:var(--gold-soft);
+    font-family:Georgia,serif; font-style:italic; font-size:13px; font-weight:700; display:grid; place-items:center; padding:0; }
+  .info-btn:hover{ transform:none; color:var(--gold); }
+  .srv-desc{ border-top:1px dashed var(--line); color:var(--txt-2); font-size:12.5px; line-height:1.6; margin-top:0; padding-top:0; }
+  .srv-desc.open{ margin-top:13px; padding-top:13px; }
+  .srv-precio{ display:flex; flex-wrap:wrap; gap:5px 16px; margin-top:8px; }
+  .srv-precio .reg b{ color:var(--txt); font-weight:600; }
+  .srv-precio .vipp{ color:var(--gold-soft); } .srv-precio .vipp b{ color:var(--gold-soft); font-weight:700; }
+  .vip-tag{ display:inline-block; font-size:9px; font-weight:800; letter-spacing:.06em; padding:1px 6px; border-radius:6px; margin:0 1px;
+    background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; vertical-align:middle; }
+  .sep-label{ font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--txt-3); border-top:none; display:flex; align-items:center; gap:10px; }
+  .sep-label::after{ content:''; flex:1; height:1px; background:var(--line-soft); }
+
+  /* FECHAS */
+  .fecha-card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; min-width:66px; padding:13px 0;
+    transition:transform .32s var(--spring), border-color .25s, background .25s; }
+  .fecha-card:active{ transform:scale(.95); }
+  .fecha-card.selected{ border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); transform:scale(1.05); box-shadow:0 8px 20px rgba(201,162,75,.14); }
+  .fecha-dia-num{ font-family:'Playfair Display',serif; font-size:22px; color:var(--txt); }
+  .fecha-card.selected .fecha-dia-num{ color:var(--gold-soft); }
+  .fecha-dia-nom{ color:var(--txt-3); letter-spacing:.1em; }
+  .fecha-card.selected .fecha-dia-nom{ color:var(--gold-soft); }
+  .fecha-mes{ color:var(--txt-3); }
+
+  /* BARBEROS → avatares */
+  .barbero-toggle{ color:var(--txt-2); }
+  .toggle-link{ color:var(--gold-soft); text-decoration:none; border-bottom:1px solid var(--gold-dim); }
+  .barb-chips{ gap:11px; }
+  .barb-av{ text-align:center; cursor:pointer; width:64px; flex-shrink:0; }
+  .barb-av .av{ position:relative; width:56px; height:56px; margin:0 auto 6px; border-radius:50%; display:grid; place-items:center;
+    font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:var(--txt-2); background:var(--panel-2); border:1.5px solid var(--line);
+    transition:transform .4s var(--spring), border-color .25s, color .25s, box-shadow .25s; }
+  .barb-av:active .av{ transform:scale(.92); }
+  .barb-av.active .av{ border-color:var(--gold); color:var(--gold-soft); transform:translateY(-4px) scale(1.05); box-shadow:0 8px 18px rgba(201,162,75,.22), 0 0 0 4px rgba(201,162,75,.1); }
+  .barb-av .nm{ font-size:11.5px; color:var(--txt-2); }
+  .barb-av.active .nm{ color:var(--txt); font-weight:600; }
+  .b-vip{ position:absolute; top:-5px; right:-6px; font-size:8px; font-weight:800; letter-spacing:.05em; padding:2px 5px; border-radius:7px;
+    background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; box-shadow:0 2px 7px rgba(201,162,75,.45); }
+
+  /* HORARIOS */
+  .hora-card{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px 4px; color:var(--txt); font-weight:500;
+    font-variant-numeric:tabular-nums; transition:transform .3s var(--spring), border-color .25s, background .25s, color .25s; }
+  .hora-card:active{ transform:scale(.93); }
+  .hora-card.selected{ border-color:var(--gold); background:linear-gradient(180deg,#1c1810,#141210); color:var(--gold-soft); font-weight:600; transform:scale(1.04); box-shadow:0 6px 16px rgba(201,162,75,.14); }
+
+  /* FORM */
+  .fl{ color:var(--txt-3); letter-spacing:.1em; }
+  .fi{ padding:14px 15px; font-size:15px; background:var(--panel); border:1px solid var(--line); border-radius:12px; color:var(--txt); }
+  .fi:focus{ border-color:var(--gold-dim); box-shadow:0 0 0 3px rgba(201,162,75,.1); }
+
+  /* RESUMEN */
+  .resumen-card{ background:linear-gradient(180deg,var(--panel),#101012); border:1px solid var(--line); border-radius:16px; padding:6px 18px; }
+  .res-row{ padding:13px 0; border-bottom:1px solid var(--line-soft); font-size:13.5px; }
+  .res-lbl{ color:var(--txt-2); } .res-val{ color:var(--txt); }
+
+  /* BOTONES */
+  .btn-primary{ background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#161206; border-radius:14px; font-weight:700; letter-spacing:.3px;
+    box-shadow:0 8px 24px rgba(201,162,75,.24); transition:transform .28s var(--spring), filter .2s, opacity .2s; }
+  .btn-primary:active:not(:disabled){ transform:scale(.97); }
+  .btn-primary:disabled{ opacity:.28; box-shadow:none; }
+  .btn-secondary{ border:1px solid var(--line); color:var(--txt-2); border-radius:14px; }
+
+  /* AVISO YAMI / PENDIENTE (ámbar oro) */
+  .aviso-yami, .pendiente-card{ background:#1c1608; border-color:var(--gold-dim); border-radius:14px; }
+  .aviso-yami-titulo, .pendiente-titulo{ color:var(--gold-soft); }
+
+  /* TICKET Onyx + SELLO */
+  .conf-icon, .conf-titulo, .conf-sub{ display:none; }
+  .seal{ width:92px; height:92px; margin:0 auto 22px; border-radius:50%; display:grid; place-items:center; position:relative;
+    background:radial-gradient(circle at 50% 35%, #26200f, #141210); border:1.5px solid var(--gold-dim); animation:stampin .6s var(--spring) both; }
+  @keyframes stampin{ 0%{transform:scale(1.7) rotate(-14deg); opacity:0;} 55%{transform:scale(.9) rotate(4deg);} 100%{transform:scale(1) rotate(0); opacity:1;} }
+  .seal::after{ content:''; position:absolute; inset:6px; border-radius:50%; border:1px dashed rgba(201,162,75,.45); }
+  .seal svg{ width:42px; height:42px; z-index:1; }
+  .seal .chk{ stroke:var(--gold); stroke-width:3.2; fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:48; stroke-dashoffset:48; animation:draw .6s .4s var(--ease) forwards; }
+  @keyframes draw{ to{stroke-dashoffset:0;} }
+  .seal-title{ font-family:'Playfair Display',serif; font-size:27px; font-weight:700; margin-bottom:8px; }
+  .seal-sub{ font-size:13.5px; color:var(--txt-2); max-width:300px; margin:0 auto 24px; line-height:1.6; }
+  .ticket{ border:1px solid var(--line); box-shadow:0 20px 50px rgba(0,0,0,.5); }
+  .ticket-head.ok{ background:linear-gradient(135deg,#221c10,#161310); border-bottom:1px dashed var(--gold-dim); }
+  .ticket-head.wait{ background:linear-gradient(135deg,#2a1f04,#161310); border-bottom:1px dashed var(--gold-dim); }
+  .ticket-estado{ color:var(--gold-soft); }
+  .ticket-body{ background:var(--panel); border-color:var(--line); }
+  .ticket-val{ color:var(--txt); }
+
+  /* WHATSAPP flotante → neón */
+  .wa-fab{ display:flex; align-items:center; gap:8px; padding:12px 18px; border-radius:30px; background:#12e06a !important; color:#04180d !important;
+    font-weight:700; box-shadow:0 0 20px rgba(18,224,106,.6), 0 6px 18px rgba(18,224,106,.35) !important; animation:waGlow 2.6s ease-in-out infinite; }
+  @keyframes waGlow{ 0%,100%{box-shadow:0 0 16px rgba(18,224,106,.45), 0 6px 18px rgba(18,224,106,.3);} 50%{box-shadow:0 0 26px rgba(18,224,106,.75), 0 6px 20px rgba(18,224,106,.4);} }
+  </style>
 </head>
 <body>
 <div class="app">
@@ -220,7 +367,7 @@
 
 <div class="toast" id="toast"></div>
 
-<a href="https://wa.me/522223961602" target="_blank" style="position:fixed;bottom:1.5rem;right:1rem;background:#25d366;border-radius:30px;display:flex;align-items:center;gap:8px;padding:12px 18px;text-decoration:none;box-shadow:0 4px 12px rgba(37,211,102,.4);z-index:50;font-size:14px;font-weight:600;color:#fff;transition:transform .15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">💬 Escríbenos por WhatsApp</a>
+<a class="wa-fab" href="https://wa.me/522223961602" target="_blank" style="position:fixed;bottom:1.5rem;right:1rem;text-decoration:none;z-index:50;font-size:14px;">💬 WhatsApp</a>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
@@ -314,6 +461,29 @@ function ordenarServicios(lista){
   return [individuales[0], ...paquetes, ...individuales.slice(1), ...ondulado];
 }
 
+// Íconos SVG por tipo de servicio (heredan color oro al seleccionar). Sin campo en Firestore: se infiere por nombre.
+const ICONOS = {
+  scissors:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>',
+  clipper:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v5M8 3v5M11 3v5"/><path d="M3 8h10.5l5.5 5.5a2.6 2.6 0 0 1-3.7 3.7L4 11z"/></svg>',
+  razor:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10 14a3 3 0 0 1-3 .5"/><path d="M10 14 7.5 16.5a3 3 0 1 1-3-3L7 11"/><path d="M14 6l4 4"/></svg>',
+  crown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-1.5 10h-15z"/><line x1="6" y1="21" x2="18" y2="21"/></svg>',
+  sparkle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>',
+  droplet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.4 6 10.4a6 6 0 0 1-12 0C6 9.4 12 3 12 3z"/></svg>',
+  wave:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M3 15c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></svg>',
+  design:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18L9 6l3 7 2-4 6 9"/></svg>',
+};
+function iconoPara(nombre){
+  const n = (nombre||'').toLowerCase();
+  if (n.includes('greca') || n.includes('diseño') || n.includes('diseno')) return ICONOS.design;
+  if (n.includes('ceja') || n.includes('contorno') || n.includes('retoque')) return ICONOS.razor;
+  if (n.includes('barba')) return ICONOS.clipper;
+  if (n.includes('facial') || n.includes('carbón') || n.includes('carbon') || n.includes('exfoli') || n.includes('limpieza profunda')) return ICONOS.sparkle;
+  if (n.includes('oído') || n.includes('oido') || n.includes('pigment')) return ICONOS.droplet;
+  if (n.includes('ondulado') || n.includes('permanente')) return ICONOS.wave;
+  if (n.includes('paq') || n.includes('rey') || n.includes('patrón') || n.includes('patron') || n.includes('vip')) return ICONOS.crown;
+  return ICONOS.scissors;
+}
+
 // ---- PASO 1: Servicios ----
 function renderServiciosGrid(){
   const grid = document.getElementById('servicios-grid');
@@ -328,13 +498,26 @@ function renderServiciosGrid(){
       sepPuesto = true;
     }
     const descId = `desc-${s.id}`;
-    const tieneDesc = !!(s.descripcion && s.descripcion.trim());
+    const descTxt = (s.descripcion && s.descripcion.trim()) ? `<div>${s.descripcion}</div>` : '';
+    let precioHtml = '';
+    if (s.precio || s.precioVip) {
+      precioHtml = `<div class="srv-precio">`;
+      if (s.precio) precioHtml += `<span class="reg">Precio <b>$${s.precio}</b></span>`;
+      if (s.precioVip) precioHtml += `<span class="vipp">Con Edson <span class="vip-tag">VIP</span> <b>$${s.precioVip}</b></span>`;
+      precioHtml += `</div>`;
+    }
     const card = document.createElement('div'); card.className='srv-card';
     card.innerHTML = `
-      ${tieneDesc ? `<button type="button" class="info-btn" onclick="event.stopPropagation(); toggleInfo('${descId}')" title="Ver qué incluye">ⓘ</button>` : ''}
-      <div class="srv-nombre">${s.nombre}</div>
-      <div class="srv-duracion">${duracionLabel(s.slots)}${s.precio?' · $'+s.precio:''}</div>
-      ${tieneDesc ? `<div class="srv-desc" id="${descId}">${s.descripcion}</div>` : ''}
+      <div class="srv-top">
+        <div class="srv-ic">${iconoPara(s.nombre)}</div>
+        <div class="srv-mid">
+          <div class="srv-nombre">${s.nombre}</div>
+          <div class="srv-duracion">${duracionLabel(s.slots)}</div>
+        </div>
+        <button type="button" class="info-btn" onclick="event.stopPropagation(); toggleInfo('${descId}')" title="Ver detalles y precio">i</button>
+        <div class="srv-tick"></div>
+      </div>
+      <div class="srv-desc" id="${descId}">${descTxt}${precioHtml}</div>
     `;
     card.onclick = () => {
       document.querySelectorAll('.srv-card').forEach(c => c.classList.remove('selected'));
@@ -402,9 +585,11 @@ function renderBarberoChips(){
 
   toggle.style.display = 'none';
   cont.style.display = 'flex';
-  let html = `<div class="barb-chip cualquiera${prefBarbero==='cualquiera'?' active':''}" onclick="elegirBarbero('cualquiera')">Cualquiera</div>`;
+  let html = `<div class="barb-av${prefBarbero==='cualquiera'?' active':''}" onclick="elegirBarbero('cualquiera')"><div class="av">✦</div><div class="nm">Cualquiera</div></div>`;
   candidatos.forEach(b => {
-    html += `<div class="barb-chip especial${prefBarbero===b.nombre?' active':''}" onclick="elegirBarbero('${b.nombre}')">${b.nombre}</div>`;
+    const ini = (b.nombre||'?').trim().charAt(0).toUpperCase();
+    const vip = b.vip ? '<span class="b-vip">VIP</span>' : '';
+    html += `<div class="barb-av${prefBarbero===b.nombre?' active':''}" onclick="elegirBarbero('${b.nombre}')"><div class="av">${ini}${vip}</div><div class="nm">${b.nombre}</div></div>`;
   });
   cont.innerHTML = html;
 }
@@ -634,13 +819,15 @@ function renderTicket({ esYami, folio, nombre, tel, d }){
     : 'Tu cita ya quedó agendada. Te esperamos. Si necesitas cambiarla, escríbenos por WhatsApp.';
 
   document.getElementById('confirmacion').innerHTML = `
+    <div class="seal"><svg viewBox="0 0 44 44"><path class="chk" d="M12 23 l7 7 l14 -16"/></svg></div>
+    <div class="seal-title">${esYami ? 'Solicitud enviada' : '¡Cita reservada!'}</div>
+    <div class="seal-sub">${foot}</div>
     <div class="ticket">
       <div class="ticket-head ${headClass}">
         <div class="ticket-estado">${estadoChico}</div>
         <div class="ticket-estado-big">${estadoGrande}</div>
       </div>
       <div class="ticket-body">
-        <div class="ticket-folio">FOLIO ${folio}</div>
         <div class="ticket-row"><span class="ticket-lbl">Servicio</span><span class="ticket-val">${selServicio.nombre}</span></div>
         <div class="ticket-row"><span class="ticket-lbl">Fecha</span><span class="ticket-val">${fecha}</span></div>
         <div class="ticket-row"><span class="ticket-lbl">Horario</span><span class="ticket-val">${slot12hr(selSlot)}</span></div>
@@ -650,8 +837,8 @@ function renderTicket({ esYami, folio, nombre, tel, d }){
         <div class="ticket-foot">${foot}</div>
       </div>
     </div>
-    <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;background:#25d366;color:#fff;">💬 Contactar por WhatsApp</a>
-    <button class="btn-primary" onclick="reiniciar()" style="margin-top:8px;">Agendar otra cita</button>
+    <a href="https://wa.me/522223961602" target="_blank" class="btn-primary" style="display:block;text-align:center;text-decoration:none;background:#12e06a;color:#04180d;">💬 Contactar por WhatsApp</a>
+    <button class="btn-secondary" onclick="reiniciar()" style="margin-top:8px;">Agendar otra cita</button>
   `;
 }
 
