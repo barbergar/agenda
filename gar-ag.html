@@ -451,19 +451,41 @@ function slotToMin(s){ const [h,m]=s.split(':').map(Number); return h*60+m; }
 function getDateKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
 
+// Etiqueta legible de la fecha de un aviso, y si es de hoy o de un día futuro
+function etiquetaFechaAviso(fechaKey){
+  const hoyKey = getDateKey(new Date());
+  if (fechaKey === hoyKey) return { esFuturo:false, texto:'Hoy' };
+  // Parsear la fecha del aviso (YYYY-MM-DD) sin problemas de zona horaria
+  const [y,m,d] = fechaKey.split('-').map(Number);
+  const fa = new Date(y, m-1, d);
+  const manana = new Date(); manana.setHours(0,0,0,0); manana.setDate(manana.getDate()+1);
+  if (getDateKey(fa) === getDateKey(manana)) return { esFuturo:true, texto:'Mañana' };
+  return { esFuturo:true, texto:`${DIAS_CORTO[fa.getDay()]} ${fa.getDate()} ${MESES[fa.getMonth()].slice(0,3)}` };
+}
+
 function renderColaAvisos(){
   const cont = document.getElementById('cola-avisos');
   if (!cont) return;
   if (avisosWeb.length === 0) { cont.innerHTML = ''; return; }
+  // Ordenar: primero los de días futuros (los importantes), luego los de hoy
+  const ordenados = [...avisosWeb].sort((a,b) => {
+    const fa = etiquetaFechaAviso(a.fecha).esFuturo ? 0 : 1;
+    const fb = etiquetaFechaAviso(b.fecha).esFuturo ? 0 : 1;
+    if (fa !== fb) return fa - fb;
+    return (a.fecha||'').localeCompare(b.fecha||''); // dentro del mismo grupo, por fecha
+  });
   let html = `<div class="cola-titulo">🎫 Avisos pendientes (${avisosWeb.length})</div>`;
-  avisosWeb.forEach(a => {
-    const color = '#22c55e';
-    const etq = '✅ Agendada';
-    html += `<div class="ticket-aviso" style="border-left-color:${color}">
+  ordenados.forEach(a => {
+    const info = etiquetaFechaAviso(a.fecha);
+    const color = info.esFuturo ? '#f59e0b' : '#22c55e';
+    const fondo = info.esFuturo ? 'background:#2a1e05;' : '';
+    const etq = info.esFuturo ? `⚡ Otro día · ${info.texto}` : '✅ Agendada · Hoy';
+    const btnFg = info.esFuturo ? '#2d1600' : '#04210f';
+    html += `<div class="ticket-aviso" style="border-left-color:${color};${fondo}">
       <div class="ta-etq" style="color:${color}">${etq}</div>
       <div class="ta-nombre">${a.nombre} · ${a.barbero}</div>
       <div class="ta-sub">${a.servicio||''} · ${slot12hr(a.slot)}</div>
-      <button class="ta-btn" style="background:${color};color:#04210f" onclick="atenderAviso('${a.id}')">Entendido</button>
+      <button class="ta-btn" style="background:${color};color:${btnFg}" onclick="atenderAviso('${a.id}')">Entendido</button>
     </div>`;
   });
   cont.innerHTML = html;
@@ -476,8 +498,7 @@ window.atenderAviso = function(id){
 let fechaActual = new Date(); fechaActual.setHours(0,0,0,0);
 let citas = [];
 // --- Avisos de web (citas directas) ---
-let avisosWeb = [];              // {tipo:'directa', nombre, barbero, slot, servicio, ts, id}
-let idsCitasVistas = null;       // Set de ids de citas ya conocidas (null = primera carga)
+let avisosWeb = [];              // {tipo:'directa', nombre, barbero, slot, servicio, fecha, ts, id}
 function beep(){
   try {
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
@@ -490,6 +511,8 @@ function beep(){
   } catch(e){}
 }
 let unsubCitas = null;
+let unsubAvisos = null;          // escucha independiente: avisos de web desde hoy en adelante
+let idsAvisosVistos = null;      // Set de ids ya conocidos por el escucha de avisos
 let unsubBarberos = null;
 let unsubServicios = null;
 let seeding = false;
@@ -646,23 +669,34 @@ window.moverServicio = async function(id, direccion){
   } catch(e) { showToast('Error al reordenar'); }
 };
 
+// Solo dibuja la grilla del día que se está viendo. NO dispara avisos.
 function escucharCitas(){
   if (unsubCitas) unsubCitas();
   unsubCitas = onSnapshot(query(collection(db,'citas'), where('fecha','==',getDateKey(fechaActual))), snap => {
     citas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    // Detectar citas nuevas que vinieron de la web
-    const ids = new Set(citas.map(c=>c.id));
-    if (idsCitasVistas !== null) {
-      citas.forEach(c => {
-        if (!idsCitasVistas.has(c.id) && c.origen==='web') {
-          avisosWeb.unshift({ tipo:'directa', nombre:c.nombre, barbero:c.barbero, slot:c.slot, servicio:c.servicio, ts:c.ts||Date.now(), id:c.id });
+    renderGrid();
+    verificarConfirmaciones();
+  });
+}
+
+// Escucha independiente de la fecha navegada: vigila las citas de web
+// de HOY EN ADELANTE y las mete a la cola de avisos. Se ancla al día real,
+// así que sigue avisando aunque recepción esté viendo otro día del calendario.
+function escucharAvisosWeb(){
+  if (unsubAvisos) unsubAvisos();
+  const hoyKey = getDateKey(new Date());
+  unsubAvisos = onSnapshot(query(collection(db,'citas'), where('fecha','>=',hoyKey)), snap => {
+    const web = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(c => c.origen==='web');
+    const ids = new Set(web.map(c=>c.id));
+    if (idsAvisosVistos !== null) {
+      web.forEach(c => {
+        if (!idsAvisosVistos.has(c.id) && !avisosWeb.some(a=>a.id===c.id)) {
+          avisosWeb.unshift({ tipo:'directa', nombre:c.nombre, barbero:c.barbero, slot:c.slot, servicio:c.servicio, fecha:c.fecha, ts:c.ts||Date.now(), id:c.id });
           beep(); renderColaAvisos();
         }
       });
     }
-    idsCitasVistas = ids;
-    renderGrid();
-    verificarConfirmaciones();
+    idsAvisosVistos = ids;
   });
   if (Notification.permission === 'default') Notification.requestPermission();
 }
@@ -1252,6 +1286,7 @@ actualizarFecha();
 escucharBarberos();
 escucharServicios();
 escucharCitas();
+escucharAvisosWeb();
 escucharOverrides();
 
 setInterval(() => { renderGrid(); verificarConfirmaciones(); }, 60000);
