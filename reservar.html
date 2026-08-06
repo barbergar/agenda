@@ -329,6 +329,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 /* ============================================================
    CONFIGURACIÓN EDITABLE
@@ -369,6 +370,29 @@ const AVISO_PRIVACIDAD = {
    ============================================================ */
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+// ================== LOGIN ANÓNIMO (público, sin fricción) ==================
+// El cliente NO se registra ni ve nada. Firebase le da una identidad temporal
+// para que las reglas de seguridad permitan CREAR su cita. Sin esto, con las
+// reglas activas, reservar.html no podría guardar nada.
+let _resolveAuth;
+const authListo = new Promise(res => { _resolveAuth = res; });
+
+onAuthStateChanged(auth, user => {
+  if (user) { _resolveAuth(true); }
+});
+
+async function iniciarSesionAnonima(){
+  if (auth.currentUser) return;
+  try {
+    await signInAnonymously(auth);
+  } catch (e) {
+    console.error("Fallo el login anónimo:", e.code, e.message);
+  }
+}
+iniciarSesionAnonima();
+// ===========================================================================
 
 /* ============================================================
    CONSTANTES / HELPERS
@@ -857,6 +881,10 @@ async function submit(){
   btnNext.textContent = 'Enviando…';
 
   try {
+    // Seguridad: aseguramos tener identidad anónima antes de leer/guardar.
+    // (Por si el cliente completó el flujo antes de que terminara el login.)
+    await authListo;
+
     // --- REVALIDACIÓN ANTI-DOBLE-RESERVA ---
     // Volvemos a verificar que el hueco siga libre JUSTO antes de guardar,
     // por si alguien lo ocupó mientras el cliente llenaba sus datos.
@@ -985,8 +1013,12 @@ document.getElementById('wa-yami').href = WA_URL;
 document.getElementById('wa-ondulado').href = WA_URL;
 
 paint();
-escucharBarberos();
-escucharServicios();
+// Esperamos a tener identidad anónima ANTES de tocar Firestore, para que
+// funcione igual con las reglas de seguridad activas.
+authListo.then(() => {
+  escucharBarberos();
+  escucharServicios();
+});
 </script>
 </body>
 </html>
