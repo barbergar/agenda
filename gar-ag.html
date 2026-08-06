@@ -581,6 +581,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, doc, deleteDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 // ---- Sesión propia de Agenda (independiente de Caja) ----
 function checkAgendaSession(){
@@ -620,6 +621,36 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+// ================== CUENTA MAESTRA (login invisible del sistema) ==================
+// Esta cuenta autentica la Agenda contra Firebase para que las reglas de Firestore
+// permitan leer/escribir. NO es tu login humano (ese sigue siendo la contraseña de
+// arriba). Pega aquí el correo y la contraseña de la cuenta maestra que creaste en
+// Firebase Authentication (Users). NO borres las comillas.
+const MASTER_EMAIL = "sis.bar01+garage-agenda@gmail.com";
+const MASTER_PASS  = "G2jBr7mmQ2vLxR9pKd";
+
+// Promesa que se resuelve cuando ya estamos autenticados. El arranque de la app
+// espera a esto antes de tocar Firestore.
+let _resolveAuth;
+const authListo = new Promise(res => { _resolveAuth = res; });
+
+onAuthStateChanged(auth, user => {
+  if (user) { _resolveAuth(true); }
+});
+
+async function iniciarSesionMaestra(){
+  if (auth.currentUser) return;
+  try {
+    await signInWithEmailAndPassword(auth, MASTER_EMAIL, MASTER_PASS);
+  } catch (e) {
+    console.error("Fallo el login maestro:", e.code, e.message);
+    alert("No se pudo conectar con el servidor de la agenda. Revisa tu conexión o avisa al administrador.\n\n(" + e.code + ")");
+  }
+}
+iniciarSesionMaestra();
+// ==================================================================================
 
 const DIAS_N = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const DIAS_CORTO = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -1547,13 +1578,17 @@ const _colaFab = document.getElementById('cola-fab');
 if (_colaFab) _colaFab.onclick = () => document.getElementById('cola-avisos').classList.toggle('open');
 
 actualizarFecha();
-escucharBarberos();
-escucharServicios();
-escucharCitas();
-escucharAvisosWeb();
-escucharOverrides();
 
-setInterval(() => { renderGrid(); verificarConfirmaciones(); }, 60000);
+// Esperamos a estar autenticados con la cuenta maestra ANTES de tocar Firestore.
+// Con las reglas de seguridad activas, leer/escribir sin este login sería rechazado.
+authListo.then(() => {
+  escucharBarberos();
+  escucharServicios();
+  escucharCitas();
+  escucharAvisosWeb();
+  escucharOverrides();
+  setInterval(() => { renderGrid(); verificarConfirmaciones(); }, 60000);
+});
 </script>
 </body>
 </html>
