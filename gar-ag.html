@@ -169,7 +169,7 @@
     .agenda-table thead th {
       position: sticky; top: 0; z-index: 30; background: var(--surface);
       border-bottom: 3px solid var(--bc, var(--border-strong));
-      padding: 11px 8px 12px; text-align: center; white-space: nowrap; min-width: 172px;
+      padding: 11px 8px 12px; text-align: center; white-space: nowrap; min-width: 190px;
       box-shadow: 0 1px 0 var(--border);
     }
     .agenda-table thead th.hora-th {
@@ -189,7 +189,7 @@
     .agenda-table td.hora-cell {
       position: sticky; left: 0; z-index: 20; background: var(--surface);
       border-right: 1px solid var(--grid-line); width: 68px; min-width: 68px;
-      padding: 0 10px 0 0; text-align: right; vertical-align: middle; height: 40px;
+      padding: 0 10px 0 0; text-align: right; vertical-align: middle; height: 60px;
     }
     .agenda-table td.hora-cell.linea-hora { border-top: 1px solid var(--grid-line); }
     .hora-txt { font-size: 12px; color: var(--text-faint); white-space: nowrap; font-weight: 500; }
@@ -197,7 +197,7 @@
 
     /* Celdas / slots — bandas por hora en vez de rejilla */
     .agenda-table td.slot {
-      border-right: 1px solid var(--grid-vert); height: 40px; min-width: 172px;
+      border-right: 1px solid var(--grid-vert); height: 60px; min-width: 190px;
       position: relative; cursor: pointer; vertical-align: top; transition: background .12s ease; background: var(--surface);
     }
     .agenda-table td.slot.banda { background: var(--banda); }
@@ -217,8 +217,8 @@
     /* Citas — bloques con cuerpo */
     .cita {
       --c: var(--fijo); --cbg: var(--fijo-bg); --cbg2: var(--fijo-bg2); --cbd: var(--fijo-bd);
-      position: absolute; inset: 3px; border-radius: 9px; padding: 6px 9px 5px 11px;
-      cursor: pointer; overflow: hidden; z-index: 5;
+      position: absolute; inset: 3px; border-radius: 9px; padding: 6px 10px 5px 11px;
+      cursor: pointer; overflow: hidden; z-index: 5; display: flex; flex-direction: column; gap: 1px;
       background: linear-gradient(158deg, var(--cbg), var(--cbg2));
       border: 1px solid var(--cbd); border-left: 4px solid var(--c);
       box-shadow: var(--shadow-sm); transition: transform .12s ease, box-shadow .12s ease;
@@ -229,13 +229,27 @@
     .cita-bloqueado { --c: var(--bloqueo); --cbg: var(--bloqueo-bg); --cbg2: var(--bloqueo-bg2); --cbd: var(--bloqueo-bd);
       background-image: linear-gradient(158deg, var(--cbg), var(--cbg2)), repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(120,130,145,.10) 5px, rgba(120,130,145,.10) 10px); }
     .cita-cancelado { --c: var(--noshow);  --cbg: var(--noshow-bg);  --cbg2: var(--noshow-bg2);  --cbd: var(--noshow-bd);  }
-    .cita-nombre { font-weight: 750; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; letter-spacing: -.01em; display: flex; align-items: center; gap: 6px; }
+
+    /* Fila superior: nombre + distintivo de origen */
+    .cita-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .cita-nombre { font-weight: 750; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; letter-spacing: -.01em; display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
     .cita-nombre::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex-shrink: 0; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 22%, transparent); }
     .cita-nombre span { overflow: hidden; text-overflow: ellipsis; }
-    .cita-servicio { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; margin-top: 3px; font-weight: 600; padding-left: 13px; }
-    .cita-hora-txt { color: var(--text-faint); font-size: 10.5px; margin-top: 2px; padding-left: 13px; font-weight: 550; }
     .cita-cancelado .cita-nombre span { text-decoration: line-through; text-decoration-color: var(--noshow); text-decoration-thickness: 2px; color: var(--noshow); }
+
+    /* Distintivo: reservado en línea vs agendado directo en recepción */
+    .cita-origen {
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;
+      font-size: 9.5px; font-weight: 750; letter-spacing: .01em; text-transform: uppercase;
+      padding: 2px 6px; border-radius: 20px; line-height: 1.3; white-space: nowrap;
+    }
+    .cita-origen.web { color: var(--fijo); background: color-mix(in srgb, var(--fijo) 16%, transparent); }
+    .cita-origen.directa { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 14%, transparent); }
+
+    .cita-servicio { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; font-weight: 600; padding-left: 13px; }
     .cita-cancelado .cita-servicio { text-decoration: line-through; opacity: .7; }
+    .cita-comentario { color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-style: italic; font-weight: 500; padding-left: 13px; }
+    .cita-hora-txt { color: var(--text-faint); font-size: 10.5px; margin-top: auto; padding-left: 13px; font-weight: 550; }
 
     /* Burbuja "en curso" */
     .burbuja { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--curso); z-index: 10; animation: pulse 1.6s infinite; }
@@ -1066,16 +1080,22 @@ function renderGrid(){
       const cita = getCitaEnSlot(b.nombre, slot);
       if (cita) {
         if (cita.slot === slot) {
-          const h2 = (cita.slots||1)*40 - 6;
+          const h2 = (cita.slots||1)*60 - 6;
           const cls = `cita-${cita.tipo||'libre'}`;
           const necesitaConfirm = esHoy && slotMin<=ahoraMin && slotMin+30>ahoraMin && cita.tipo!=='bloqueado' && cita.tipo!=='cancelado' && !cita.confirmado;
           const nombreTxt = cita.tipo==='bloqueado' ? '🔒 '+(cita.motivo||'Bloqueado') : (cita.nombre||'');
+          const esWeb = cita.origen === 'web';
+          const origenTag = cita.tipo==='bloqueado' ? '' : `<span class="cita-origen ${esWeb?'web':'directa'}">${esWeb?'🌐 Reservó':'🏠 Recepción'}</span>`;
           tbHtml += `<td class="slot${extra}">
             <div class="cita ${cls}" style="height:${h2}px" onclick="abrirEditar('${cita.id}',event)">
               ${necesitaConfirm ? '<div class="burbuja"></div>' : ''}
-              <div class="cita-nombre"><span>${nombreTxt}</span></div>
+              <div class="cita-top">
+                <div class="cita-nombre"><span>${nombreTxt}</span></div>
+                ${origenTag}
+              </div>
               ${cita.tipo!=='bloqueado' ? `<div class="cita-servicio">${cita.servicio||''}</div>` : ''}
-              <div class="cita-hora-txt">${slot12hr(cita.slot)}${cita.comentario ? ` · ${cita.comentario}` : ''}</div>
+              ${cita.comentario ? `<div class="cita-comentario">💬 ${cita.comentario}</div>` : ''}
+              <div class="cita-hora-txt">${slot12hr(cita.slot)}</div>
             </div>
           </td>`;
         } else {
