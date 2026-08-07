@@ -189,7 +189,7 @@
     .agenda-table td.hora-cell {
       position: sticky; left: 0; z-index: 20; background: var(--surface);
       border-right: 1px solid var(--grid-line); width: 68px; min-width: 68px;
-      padding: 0 10px 0 0; text-align: right; vertical-align: middle; height: 60px;
+      padding: 0 10px 0 0; text-align: right; vertical-align: middle; height: 88px;
     }
     .agenda-table td.hora-cell.linea-hora { border-top: 1px solid var(--grid-line); }
     .hora-txt { font-size: 12px; color: var(--text-faint); white-space: nowrap; font-weight: 500; }
@@ -197,7 +197,7 @@
 
     /* Celdas / slots — bandas por hora en vez de rejilla */
     .agenda-table td.slot {
-      border-right: 1px solid var(--grid-vert); height: 60px; min-width: 190px;
+      border-right: 1px solid var(--grid-vert); height: 88px; min-width: 190px;
       position: relative; cursor: pointer; vertical-align: top; transition: background .12s ease; background: var(--surface);
     }
     .agenda-table td.slot.banda { background: var(--banda); }
@@ -217,8 +217,8 @@
     /* Citas — bloques con cuerpo */
     .cita {
       --c: var(--fijo); --cbg: var(--fijo-bg); --cbg2: var(--fijo-bg2); --cbd: var(--fijo-bd);
-      position: absolute; inset: 3px; border-radius: 9px; padding: 6px 10px 5px 11px;
-      cursor: pointer; overflow: hidden; z-index: 5; display: flex; flex-direction: column; gap: 1px;
+      position: absolute; inset: 3px; border-radius: 9px; padding: 5px 9px 5px 11px;
+      cursor: pointer; overflow: hidden; z-index: 5; display: flex; flex-direction: column; gap: 2px;
       background: linear-gradient(158deg, var(--cbg), var(--cbg2));
       border: 1px solid var(--cbd); border-left: 4px solid var(--c);
       box-shadow: var(--shadow-sm); transition: transform .12s ease, box-shadow .12s ease;
@@ -237,19 +237,28 @@
     .cita-nombre span { overflow: hidden; text-overflow: ellipsis; }
     .cita-cancelado .cita-nombre span { text-decoration: line-through; text-decoration-color: var(--noshow); text-decoration-thickness: 2px; color: var(--noshow); }
 
-    /* Distintivo: reservado en línea vs agendado directo en recepción */
+    /* Distintivo: reservado en línea vs agendado directo en recepción (compacto, solo ícono) */
     .cita-origen {
-      flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;
-      font-size: 9.5px; font-weight: 750; letter-spacing: .01em; text-transform: uppercase;
-      padding: 2px 6px; border-radius: 20px; line-height: 1.3; white-space: nowrap;
+      flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+      width: 17px; height: 17px; border-radius: 50%; font-size: 10px; line-height: 1;
     }
-    .cita-origen.web { color: var(--fijo); background: color-mix(in srgb, var(--fijo) 16%, transparent); }
-    .cita-origen.directa { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 14%, transparent); }
+    .cita-origen.web { background: color-mix(in srgb, var(--fijo) 20%, transparent); }
+    .cita-origen.directa { background: color-mix(in srgb, var(--text-muted) 16%, transparent); }
 
-    .cita-servicio { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; font-weight: 600; padding-left: 13px; }
+    /* Servicio + hora comparten una sola línea (el servicio rara vez es tan largo) */
+    .cita-linea2 { display: flex; align-items: baseline; gap: 5px; padding-left: 13px; overflow: hidden; }
+    .cita-servicio { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; font-weight: 600; min-width: 0; flex: 1; }
     .cita-cancelado .cita-servicio { text-decoration: line-through; opacity: .7; }
-    .cita-comentario { color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-style: italic; font-weight: 500; padding-left: 13px; }
-    .cita-hora-txt { color: var(--text-faint); font-size: 10.5px; margin-top: auto; padding-left: 13px; font-weight: 550; }
+    .cita-hora-txt { color: var(--text-faint); font-size: 10.5px; font-weight: 550; flex-shrink: 0; }
+
+    /* Comentario: máxima prioridad de visibilidad, puede ocupar 2 líneas */
+    .cita-comentario {
+      color: var(--text); background: color-mix(in srgb, var(--c) 12%, transparent);
+      border-radius: 5px; padding: 2px 6px; margin-left: 13px; margin-top: 1px;
+      font-size: 10.5px; font-weight: 600; line-height: 1.25;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
 
     /* Burbuja "en curso" */
     .burbuja { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--curso); z-index: 10; animation: pulse 1.6s infinite; }
@@ -1080,12 +1089,12 @@ function renderGrid(){
       const cita = getCitaEnSlot(b.nombre, slot);
       if (cita) {
         if (cita.slot === slot) {
-          const h2 = (cita.slots||1)*60 - 6;
+          const h2 = (cita.slots||1)*88 - 6;
           const cls = `cita-${cita.tipo||'libre'}`;
           const necesitaConfirm = esHoy && slotMin<=ahoraMin && slotMin+30>ahoraMin && cita.tipo!=='bloqueado' && cita.tipo!=='cancelado' && !cita.confirmado;
           const nombreTxt = cita.tipo==='bloqueado' ? '🔒 '+(cita.motivo||'Bloqueado') : (cita.nombre||'');
           const esWeb = cita.origen === 'web';
-          const origenTag = cita.tipo==='bloqueado' ? '' : `<span class="cita-origen ${esWeb?'web':'directa'}">${esWeb?'🌐 Reservó':'🏠 Recepción'}</span>`;
+          const origenTag = cita.tipo==='bloqueado' ? '' : `<span class="cita-origen ${esWeb?'web':'directa'}" title="${esWeb?'Reservó en línea':'Agendado en recepción'}">${esWeb?'🌐':'🏠'}</span>`;
           tbHtml += `<td class="slot${extra}">
             <div class="cita ${cls}" style="height:${h2}px" onclick="abrirEditar('${cita.id}',event)">
               ${necesitaConfirm ? '<div class="burbuja"></div>' : ''}
@@ -1093,9 +1102,8 @@ function renderGrid(){
                 <div class="cita-nombre"><span>${nombreTxt}</span></div>
                 ${origenTag}
               </div>
-              ${cita.tipo!=='bloqueado' ? `<div class="cita-servicio">${cita.servicio||''}</div>` : ''}
+              ${cita.tipo!=='bloqueado' ? `<div class="cita-linea2"><span class="cita-servicio">${cita.servicio||''}</span><span class="cita-hora-txt">${slot12hr(cita.slot)}</span></div>` : ''}
               ${cita.comentario ? `<div class="cita-comentario">💬 ${cita.comentario}</div>` : ''}
-              <div class="cita-hora-txt">${slot12hr(cita.slot)}</div>
             </div>
           </td>`;
         } else {
